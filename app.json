@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Sentroh Merchant",
+    "slug": "sentroh-merchant",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "sentrohmerchant",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.sentroh.merchant",
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "POST_NOTIFICATIONS"]
+    },
+    "ios": {
+      "bundleIdentifier": "com.sentroh.merchant",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Sentroh uses your location to pin your store on the map so drivers and customers can find it."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-splash-screen", { "backgroundColor": "#14213D", "resizeMode": "contain" }],
+      ["expo-notifications", { "color": "#0E6B63" }],
+      ["expo-location", { "locationWhenInUsePermission": "Sentroh uses your location to pin your store on the map so drivers and customers can find it." }],
+      ["expo-image-picker", { "photosPermission": "Sentroh uses your photos to show your products to customers.", "cameraPermission": "Sentroh uses the camera to take product photos." }]
+    ],
+    "experiments": { "typedRoutes": false },
+    "extra": { "router": {} }
+  }
+}

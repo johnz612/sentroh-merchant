@@ -1,0 +1,93 @@
+import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+
+import { useLoader, useStore } from "@/components/hooks";
+import { Card, Chip, Empty, Loading, Notice, Pill, s } from "@/components/ui";
+import { ago, clock, minutesLeft, money, STATUS_TEXT } from "@/lib/format";
+import { C } from "@/lib/theme";
+
+const FILTERS = [
+  ["NEW", "New"],
+  ["PREPARING", "Preparing"],
+  ["READY", "Ready"],
+  ["OUT_FOR_DELIVERY", "With driver"],
+  ["COMPLETED", "Completed"],
+  ["CANCELLED", "Cancelled"],
+];
+
+function fulfillment(o) {
+  if (o.fulfillmentType === "PICKUP") return "Pickup";
+  if (o.deliveryService === "STANDARD") return `Standard delivery${o.standardDepartureAt ? `, leaves ${clock(o.standardDepartureAt)}` : ""}`;
+  return "Express delivery";
+}
+
+function OrderRow({ order, onPress }) {
+  const left = order.status === "PENDING" ? minutesLeft(order.acceptBy) : null;
+  const isNew = order.status === "PENDING";
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button">
+      <Card tone={isNew ? "attention" : undefined}>
+        <View style={[s.row, { justifyContent: "space-between" }]}>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: C.ink }}>#{order.orderNumber}</Text>
+          <Text style={[s.body, { fontWeight: "700" }]}>{money(order.totalAmount)}</Text>
+        </View>
+        <Text style={[s.body, { marginTop: 2 }]}>{order.customerName}, {order.itemCount} item{order.itemCount === 1 ? "" : "s"}</Text>
+        <Text style={s.sub}>{fulfillment(order)}, {order.paymentMethod === "GCASH" ? "GCash" : "Cash"}</Text>
+        <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
+          {isNew
+            ? <Pill tone="attention" text={left === 0 ? "Accept now" : `Accept within ${left} min`} />
+            : <Pill tone={order.status === "CANCELLED" ? "stopped" : order.status === "COMPLETED" ? "done" : order.status === "STOCK_ISSUE" ? "attention" : "active"} text={STATUS_TEXT[order.status] || order.status} />}
+          <Text style={s.sub}>{ago(order.createdAt)}</Text>
+        </View>
+      </Card>
+    </Pressable>
+  );
+}
+
+export default function Orders() {
+  const router = useRouter();
+  const { storeId, call } = useStore();
+  const [filter, setFilter] = useState("NEW");
+  const newCount = useLoader(() => call("/orders", { query: { filter: "NEW", limit: 1 } }), [storeId], { intervalMs: 20000 });
+  const { data, error, loading, reload } = useLoader(
+    () => call("/orders", { query: { filter, limit: 50 } }), [storeId, filter], { intervalMs: 20000 },
+  );
+
+  // A new-order alert while the app is open refreshes the list right away.
+  const reloadNew = newCount.reload;
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(() => { reload(); reloadNew(); });
+    return () => sub.remove();
+  }, [reload, reloadNew]);
+
+  const pending = newCount.data?.pagination?.total ?? 0;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ paddingTop: 12, paddingBottom: 4 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+          {FILTERS.map(([value, label]) => (
+            <Chip key={value} label={label} count={value === "NEW" && pending > 0 ? pending : null} active={filter === value} onPress={() => setFilter(value)} />
+          ))}
+        </ScrollView>
+      </View>
+      {error ? <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><Notice error={error} /></View> : null}
+      {loading && !data ? <Loading what="Loading orders" /> : (
+        <FlatList
+          data={data?.orders || []}
+          keyExtractor={(o) => o.id}
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={() => { reload(); reloadNew(); }} tintColor={C.teal} />}
+          renderItem={({ item }) => <OrderRow order={item} onPress={() => router.push(`/order/${item.id}`)} />}
+          ListEmptyComponent={
+            filter === "NEW"
+              ? <Empty title="No new orders">New orders appear here with a sound. Keep notifications on.</Empty>
+              : <Empty title="Nothing here" />
+          }
+        />
+      )}
+    </View>
+  );
+}

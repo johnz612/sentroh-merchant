@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+*.apk
+*.aab
+.env
+.env.*
+!env.example
+google-services.json
+*.jks
+*.keystore
+npm-debug.*
+.DS_Store
