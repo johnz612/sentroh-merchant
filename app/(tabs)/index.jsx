@@ -8,12 +8,12 @@ import { Card, Chip, Empty, Loading, Notice, Pill, s } from "@/components/ui";
 import { ago, clock, minutesLeft, money, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
 
+// Once a driver has the order, the store's part is done; it shows under Done as "With driver".
 const FILTERS = [
   ["NEW", "New"],
   ["PREPARING", "Preparing"],
   ["READY", "Ready"],
-  ["OUT_FOR_DELIVERY", "With driver"],
-  ["COMPLETED", "Completed"],
+  ["DONE", "Done"],
   ["CANCELLED", "Cancelled"],
 ];
 

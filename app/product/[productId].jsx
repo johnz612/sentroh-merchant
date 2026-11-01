@@ -12,7 +12,7 @@ import { C } from "@/lib/theme";
 
 const EMPTY = {
   name: "", displayName: "", description: "", brand: "", price: "", stockQty: "", sellingType: "UNIT",
-  unitName: "", merchantSku: "", maxDeliveryQty: "", prepTimeMinutes: "", categoryId: null, onSale: false,
+  unitName: "", merchantSku: "", maxDeliveryQty: "", prepTimeMinutes: "", categoryId: null, onSale: false, trackStock: true,
 };
 
 const toText = (v) => (v == null ? "" : String(v));
@@ -107,11 +107,12 @@ export default function ProductScreen() {
   const { productId } = useLocalSearchParams();
   const creating = productId === "new";
   const router = useRouter();
-  const { storeId, call, canEdit } = useStore();
+  const { storeId, store, call, canEdit } = useStore();
   const loaded = useLoader(() => (creating ? Promise.resolve({ product: null }) : call(`/products/${productId}`)), [storeId, productId]);
   const cats = useLoader(() => call("/categories"), [storeId]);
   const [product, setProduct] = useState(null);
-  const [f, setF] = useState(EMPTY);
+  // Restaurants usually don't count dishes (like foodpanda and Grab); stores count stock.
+  const [f, setF] = useState({ ...EMPTY, trackStock: store?.merchantType !== "FOOD_RESTAURANT" });
   const [stockInput, setStockInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -126,7 +127,7 @@ export default function ProductScreen() {
       name: p.name, displayName: toText(p.displayName), description: toText(p.description), brand: toText(p.brand),
       price: toText(p.price), stockQty: toText(p.stockQty), sellingType: p.sellingType || "UNIT", unitName: toText(p.unitName),
       merchantSku: toText(p.merchantSku), maxDeliveryQty: toText(p.maxDeliveryQty), prepTimeMinutes: toText(p.prepTimeMinutes || ""),
-      categoryId: p.categoryId, onSale: p.onSale,
+      categoryId: p.categoryId, onSale: p.onSale, trackStock: p.trackStock !== false,
     });
     setStockInput(toText(p.stockQty));
   }, [loaded.data]);
@@ -141,7 +142,7 @@ export default function ProductScreen() {
       name: f.name.trim(), displayName: f.displayName.trim() || null, description: f.description.trim() || null, brand: f.brand.trim() || null,
       price: toNumber(f.price), stockQty: toNumber(f.stockQty), sellingType: f.sellingType, unitName: f.unitName.trim() || null,
       merchantSku: f.merchantSku.trim() || null, maxDeliveryQty: toNumber(f.maxDeliveryQty), prepTimeMinutes: toNumber(f.prepTimeMinutes),
-      categoryId: f.categoryId, onSale: f.onSale,
+      categoryId: f.categoryId, onSale: f.onSale, trackStock: f.trackStock,
     };
     if (creating) {
       Object.keys(all).forEach((k) => (all[k] === null || all[k] === "") && delete all[k]);
@@ -192,6 +193,16 @@ export default function ProductScreen() {
     }
   }
 
+  async function soldOut(until) {
+    setError(null); setDone(null);
+    try {
+      await call("/products/sold-out", { method: "POST", body: { productIds: [product.id], until } });
+      const json = await call(`/products/${product.id}`);
+      setProduct(json.product);
+      setDone(until === "TODAY" ? "Marked sold out until midnight." : "Available again.");
+    } catch (err) { setError(err); }
+  }
+
   async function addCategory() {
     if (!newCategory.trim()) return;
     try {
@@ -231,6 +242,20 @@ export default function ProductScreen() {
         </View>
       </Card>
 
+      {!creating ? (
+        <Card tone={product.soldOutUntil ? "attention" : undefined}>
+          <Label>{product.soldOutUntil ? "Sold out today" : "Ran out?"}</Label>
+          <Text style={[s.sub, { marginBottom: 8 }]}>
+            {product.soldOutUntil
+              ? "Customers can't order it until midnight. It comes back by itself."
+              : "Mark it sold out for the rest of today. It comes back by itself at midnight."}
+          </Text>
+          {product.soldOutUntil
+            ? <Button title="Available again now" kind="secondary" onPress={() => soldOut("CLEAR")} />
+            : <Button title="Sold out today" kind="attention" onPress={() => soldOut("TODAY")} />}
+        </Card>
+      ) : null}
+
       {!creating ? <Photos product={product} call={call} canEdit={canEdit} onChange={setProduct} /> : null}
 
       <Card>
@@ -251,7 +276,14 @@ export default function ProductScreen() {
               <Chip label="By weight (kg)" active={f.sellingType === "WEIGHT"} onPress={() => canEdit && set("sellingType")("WEIGHT")} />
             </View>
             <Field label={f.sellingType === "WEIGHT" ? "Price per kg (₱)" : "Price (₱)"} keyboardType="decimal-pad" value={f.price} onChangeText={set("price")} editable={canEdit} />
-            {creating ? (
+            <View style={[s.row, { justifyContent: "space-between", marginBottom: 12 }]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[s.body, { fontWeight: "600" }]}>Count stock</Text>
+                <Text style={s.sub}>{f.trackStock ? "Sales lower the count; at 0 customers can't order it." : "No count. Use \"Sold out today\" when you run out."}</Text>
+              </View>
+              <Switch value={f.trackStock} disabled={!canEdit} onValueChange={set("trackStock")} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+            </View>
+            {creating && f.trackStock ? (
               <Field label={f.sellingType === "WEIGHT" ? "Stock (kg)" : "Stock"} keyboardType="decimal-pad" value={f.stockQty} onChangeText={set("stockQty")} />
             ) : null}
             <Field label="Brand" value={f.brand} onChangeText={set("brand")} editable={canEdit} />
@@ -262,7 +294,7 @@ export default function ProductScreen() {
         <Field label="Description" value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
       </Card>
 
-      {!creating && !pos ? (
+      {!creating && !pos && product.trackStock ? (
         <Card>
           <Label>Stock</Label>
           <Text style={[s.sub, { marginBottom: 8 }]}>Any staff can update this.</Text>

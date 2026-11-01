@@ -208,7 +208,15 @@ export default function OrderScreen() {
           {!isPickup ? <Row label="Delivery fee" value={money((o.fees.baseDelivery || 0) + (o.fees.surchargeDelivery || 0))} /> : null}
           {o.fees.smallOrder > 0 ? <Row label="Small-order fee" value={money(o.fees.smallOrder)} /> : null}
           <Row label="Customer pays" value={money(o.totalAmount)} bold />
-          {o.commissionAmount > 0 ? <Row label="Sentroh commission" value={money(o.commissionAmount)} /> : null}
+          <View style={{ height: 1, backgroundColor: C.line, marginVertical: 6 }} />
+          <Row label="Your items" value={money(o.subtotal)} />
+          <Row label="Sentroh commission" value={o.commissionAmount > 0 ? `− ${money(o.commissionAmount)}` : money(0)} />
+          <Row label="You earn" value={money((o.subtotal || 0) - (o.commissionAmount || 0))} bold />
+          <Text style={[s.sub, { marginTop: 4 }]}>
+            {isPickup
+              ? "The customer pays you at pickup. The commission comes out of your deposit."
+              : "The customer pays the driver. Sentroh sends your earnings in the weekly payout. Delivery fees go to the driver and Sentroh."}
+          </Text>
         </View>
       </Card>
 

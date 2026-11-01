@@ -1,9 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 
+import { useStore } from "@/components/hooks";
 import { C } from "@/lib/theme";
 
 export default function TabsLayout() {
+  const { canEdit } = useStore();
   return (
     <Tabs screenOptions={{
       tabBarActiveTintColor: C.teal,
@@ -14,6 +16,7 @@ export default function TabsLayout() {
     }}>
       <Tabs.Screen name="index" options={{ title: "Orders", tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="products" options={{ title: "Products", tabBarIcon: ({ color, size }) => <Ionicons name="pricetags-outline" color={color} size={size} /> }} />
+      <Tabs.Screen name="earnings" options={{ title: "Earnings", href: canEdit ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="wallet-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="store" options={{ title: "Store", tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" color={color} size={size} /> }} />
     </Tabs>
   );

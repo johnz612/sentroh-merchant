@@ -10,7 +10,7 @@ import { Body, Button, Card, Chip, Empty, Loading, Notice, s } from "@/component
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { C } from "@/lib/theme";
 
-const VIEWS = [["ALL", "All"], ["ON_SALE", "On sale"], ["OFF", "Off"], ["OUT_OF_STOCK", "Out of stock"], ["HIDDEN_BY_SENTROH", "Hidden by Sentroh"]];
+const VIEWS = [["ALL", "All"], ["ON_SALE", "On sale"], ["OFF", "Off"], ["SOLD_OUT_TODAY", "Sold out today"], ["OUT_OF_STOCK", "Out of stock"], ["HIDDEN_BY_SENTROH", "Hidden by Sentroh"]];
 
 
 function ProductRow({ p, onToggle, onPress, toggling }) {
@@ -22,7 +22,9 @@ function ProductRow({ p, onToggle, onPress, toggling }) {
           : <View style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12, backgroundColor: C.paper, alignItems: "center", justifyContent: "center" }}><Ionicons name="image-outline" size={22} color={C.inkSoft} /></View>}
         <View style={{ flex: 1 }}>
           <Text style={[s.body, { fontWeight: "600" }]} numberOfLines={2}>{p.displayName || p.name}</Text>
-          <Text style={s.sub}>{money(p.price)}, {p.stockQty}{p.stockUnit === "KG" ? " kg" : ""} in stock{p.managedByPos ? ", from POS" : ""}</Text>
+          <Text style={s.sub}>
+            {money(p.price)}, {p.trackStock ? `${p.stockQty}${p.stockUnit === "KG" ? " kg" : ""} in stock` : "stock not counted"}{p.managedByPos ? ", from POS" : ""}
+          </Text>
           {!p.shownToCustomers && p.onSale ? <Text style={[s.sub, { color: p.hiddenReason === "HIDDEN_BY_SENTROH" ? C.red : C.mangoInk }]}>Customers can't see it: {WHY_HIDDEN[p.hiddenReason] || "hidden"}</Text> : null}
           {p.hiddenReason === "HIDDEN_BY_SENTROH" && p.hiddenBySentrohReason ? <Text style={[s.sub, { color: C.red }]}>{p.hiddenBySentrohReason}</Text> : null}
         </View>
