@@ -9,7 +9,15 @@
     "android": {
       "package": "com.sentroh.merchant",
       "predictiveBackGestureEnabled": false,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "POST_NOTIFICATIONS"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.sentroh.merchant",
@@ -20,12 +28,41 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-splash-screen", { "backgroundColor": "#14213D", "resizeMode": "contain" }],
-      ["expo-notifications", { "color": "#0E6B63" }],
-      ["expo-location", { "locationWhenInUsePermission": "Sentroh uses your location to pin your store on the map so drivers and customers can find it." }],
-      ["expo-image-picker", { "photosPermission": "Sentroh uses your photos to show your products to customers.", "cameraPermission": "Sentroh uses the camera to take product photos." }]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0E6B63"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sentroh uses your location to pin your store on the map so drivers and customers can find it."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sentroh uses your photos to show your products to customers.",
+          "cameraPermission": "Sentroh uses the camera to take product photos."
+        }
+      ]
     ],
-    "experiments": { "typedRoutes": false },
-    "extra": { "router": {} }
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {}
+    },
+    "icon": "./assets/icon.png"
   }
 }
