@@ -6,21 +6,32 @@ auto-accept, deposit. Backend: `sentroh-platform/apps/marketplace-api`.
 
 ## First-time setup (Windows, in D:\Sentroh\sentroh-merchant)
 1. `npm install`, then `npx expo install --fix` (aligns package versions with Expo SDK 57).
-2. `copy env.example .env` and fill in the three values (same DEV Supabase URL and
-   anon key as the customer app; the API address is your PC's Wi-Fi address,
-   e.g. `http://192.168.1.7:4000`, because the phone cannot use localhost).
-3. `npx eas-cli login`, then `npx eas-cli init` (creates the EAS project and adds
-   its id to app.json).
-4. Push alerts on Android need Firebase Cloud Messaging:
-   - Firebase console > new project > add Android app `com.sentroh.merchant`.
-   - Project settings > Service accounts > Generate new private key (JSON).
-   - `npx eas-cli credentials` > Android > development > Google Service Account
-     > "Manage your FCM V1 service account key" > upload that JSON.
-   Never commit the JSON or google-services.json.
-5. Build the development app once: `npx eas-cli build --profile development --platform android`,
-   then open the link on your phone and install the APK.
+2. `copy env.example .env` and fill in the three values: the same DEV Supabase URL
+   and anon key as the customer app, and the API address
+   (`http://10.0.2.2:4000` for the Android emulator, which is your PC as seen from it).
+
+### Run on the Android emulator (no Expo account needed)
+3. Start the emulator from Android Studio (Device Manager > play button).
+   Use a system image "with Google Play" if you want push alerts later.
+4. `npx expo run:android` builds the app on your PC and installs it on the emulator
+   (the first build takes several minutes). After that, `npm start` and press `a`.
+
+### Push alerts (later, optional)
+New-order alerts on Android need Firebase Cloud Messaging. Without it the app
+works; it just cannot receive alerts (orders still refresh every 20 seconds).
+- Firebase console > new project > add Android app `com.sentroh.merchant` >
+  download `google-services.json` into this folder (it is git-ignored).
+- Add `"googleServicesFile": "./google-services.json"` under `expo.android` in
+  app.json, then `npx expo run:android` again.
+- For Expo's push service: `npx eas-cli login`, `npx eas-cli init`, then
+  `npx eas-cli credentials` > Android > Google Service Account > upload the FCM V1
+  key (Firebase > Project settings > Service accounts > Generate new private key).
+  Never commit these files.
+
+### Real phone (later)
+`npx eas-cli build --profile development --platform android`, install the APK,
+and use your PC's Wi-Fi address as the API address.
 
 ## Every day
-- Start the API (`npm run dev:api` in sentroh-platform), then here: `npm start`.
-- Open the Sentroh Merchant app on the phone; it connects to your PC (same Wi-Fi).
-- Code changes load live. Rebuild (step 5) only after adding native packages.
+- Start the API (`npm run dev:api` in sentroh-platform), the emulator, then here: `npm start` and press `a`.
+- Code changes load live. Run `npx expo run:android` again only after adding native packages.
