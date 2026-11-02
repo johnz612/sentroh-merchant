@@ -8,6 +8,7 @@ import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Field, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
+import { fileBytes, prepareProductPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
 
@@ -32,21 +33,27 @@ function Photos({ product, call, canEdit, onChange }) {
     const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return setError(new Error(fromCamera ? "Allow the camera to take a photo." : "Allow photo access to pick a photo."));
 
-    const options = { mediaTypes: ["images"], quality: 0.7, allowsEditing: true, aspect: [1, 1] };
+    const options = { mediaTypes: ["images"], quality: 1, allowsEditing: true, aspect: [1, 1] };
     const picked = fromCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
     if (picked.canceled || !picked.assets?.[0]) return;
 
     const asset = picked.assets[0];
-    const contentType = asset.mimeType === "image/png" ? "image/png" : asset.mimeType === "image/webp" ? "image/webp" : "image/jpeg";
-    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) return setError(new Error("That photo is over 5 MB. Choose a smaller one."));
 
     setBusy(true);
     try {
-      const { upload } = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType } });
-      const bytes = await (await fetch(asset.uri)).arrayBuffer();
-      const { error: upErr } = await supabase.storage.from("product-images").uploadToSignedUrl(upload.path, upload.token, bytes, { contentType });
-      if (upErr) throw new Error("The photo did not upload. Check your connection and try again.");
-      const json = await call(`/products/${product.id}/images`, { method: "POST", body: { path: upload.path } });
+      // Shrunk on the phone first: a ≤1280 px photo and a 320 px copy for lists (both JPEG).
+      const { photo, thumb } = await prepareProductPhoto(asset);
+      const contentType = "image/jpeg";
+      const { upload, thumbUpload } = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType } });
+      const bucket = supabase.storage.from("product-images");
+      const [up, upThumb] = await Promise.all([
+        bucket.uploadToSignedUrl(upload.path, upload.token, await fileBytes(photo.uri), { contentType }),
+        thumbUpload ? bucket.uploadToSignedUrl(thumbUpload.path, thumbUpload.token, await fileBytes(thumb.uri), { contentType }) : { error: null },
+      ]);
+      if (up.error) throw new Error("The photo did not upload. Check your connection and try again.");
+      // A failed small copy is not fatal: lists then use the full photo.
+      const body = { path: upload.path, ...(thumbUpload && !upThumb.error ? { thumbPath: thumbUpload.path } : {}) };
+      const json = await call(`/products/${product.id}/images`, { method: "POST", body });
       onChange(json.product);
     } catch (err) {
       setError(err);
@@ -88,7 +95,7 @@ function Photos({ product, call, canEdit, onChange }) {
               { text: "Cancel", style: "cancel" },
             ])}
             style={{ marginRight: 8 }}>
-            <Image source={{ uri: img.url }} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} contentFit="cover" />
+            <Image source={{ uri: img.thumbnailUrl || img.url }} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} contentFit="cover" />
             {idx === 0 ? <Text style={[s.sub, { textAlign: "center" }]}>Main</Text> : null}
           </Pressable>
         ))}
