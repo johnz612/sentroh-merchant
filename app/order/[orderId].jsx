@@ -136,7 +136,6 @@ export default function OrderScreen() {
     reload();
   }
 
-  const address = o.deliveryAddress;
 
   return (
     <Screen>
@@ -227,7 +226,11 @@ export default function OrderScreen() {
         {o.customerPhone ? (
           <Pressable onPress={() => Linking.openURL(`tel:${o.customerPhone}`)}><Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Call {o.customerPhone}</Text></Pressable>
         ) : null}
-        {address ? <Body muted style={{ marginTop: 6 }}>{address.fullAddress}{address.landmark ? `\nLandmark: ${address.landmark}` : ""}</Body> : null}
+        {!isPickup ? (
+          <Body muted style={{ marginTop: 6 }}>
+            The driver has the address and contacts the customer{o.deliveryDistanceKm != null ? ` (${Number(o.deliveryDistanceKm).toFixed(1)} km away)` : ""}.
+          </Body>
+        ) : null}
         {o.notes ? <Body style={{ marginTop: 6 }}>Note: {o.notes}</Body> : null}
       </Card>
 
