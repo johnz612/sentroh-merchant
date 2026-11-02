@@ -9,6 +9,7 @@ import { Button, Loading, Notice, Screen, Title } from "@/components/ui";
 import { clearCache } from "@/lib/cache";
 import { registerForPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
+import { warmUpStore } from "@/lib/warmUp";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
 
@@ -24,6 +25,17 @@ function useGate() {
     else if (status === "no-store" && top !== "register") router.replace("/register");
     else if (status === "ready" && (top === "sign-in" || top === "register")) router.replace("/");
   }, [status, segments, router]);
+}
+
+/** Loads every tab's data in the background once a store is open. */
+function useWarmUp() {
+  const status = useSession((st) => st.status);
+  const storeId = useSession((st) => st.storeId);
+  const role = useSession((st) => st.stores.find((x) => x.merchantId === st.storeId)?.role);
+
+  useEffect(() => {
+    if (status === "ready" && storeId) warmUpStore(storeId, { canEdit: role === "OWNER" || role === "MANAGER" });
+  }, [status, storeId, role]);
 }
 
 /** New-order alerts: register the phone once a store is ready; tapping an alert opens the order. */
@@ -64,6 +76,7 @@ function Root() {
 
   useGate();
   usePush();
+  useWarmUp();
 
   if (status === "loading") return <Screen><Loading what="Opening your store" /></Screen>;
   if (status === "error") {

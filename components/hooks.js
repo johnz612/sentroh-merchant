@@ -2,7 +2,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { storeApi } from "@/lib/api";
-import { cached, cachedAge, remember, storeKey } from "@/lib/cache";
+import { cached, cachedAge, inflightFor, remember, storeKey, trackLoad } from "@/lib/cache";
 import { useSession } from "@/lib/session";
 
 /** The selected store's API caller and info. */
@@ -26,7 +26,7 @@ export function useStore() {
  * Returns { data, error, loading, refreshing, reload, refresh }; `refreshing`
  * is only true for a pull-to-refresh (refresh()), not for background reloads.
  */
-export function useLoader(load, deps, { intervalMs, key, refreshOnFocusMs = 15000 } = {}) {
+export function useLoader(load, deps, { intervalMs, key, refreshOnFocusMs = 15000, freshMs = 15000 } = {}) {
   const [state, setState] = useState(() => ({ key, data: key ? cached(key) ?? null : null, error: null, loading: true, refreshing: false }));
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -41,7 +41,7 @@ export function useLoader(load, deps, { intervalMs, key, refreshOnFocusMs = 1500
       loading: true, refreshing: !!byUser, error: null,
     }));
     try {
-      const data = await loadRef.current();
+      const data = await trackLoad(forKey, loadRef.current());
       if (forKey) remember(forKey, data);
       lastLoad.current = Date.now();
       if (keyRef.current !== forKey) return; // the screen moved on (other filter or store)
@@ -55,7 +55,26 @@ export function useLoader(load, deps, { intervalMs, key, refreshOnFocusMs = 1500
   const reload = useCallback(() => run(false), [run]);
   const refresh = useCallback(() => run(true), [run]);
 
-  useEffect(() => { reload(); }, [reload, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Opening a screen (or switching filter) with a copy fetched in the last `freshMs`
+  // (e.g. loaded ahead at start-up) uses it as is; no second download.
+  useEffect(() => {
+    const forKey = keyRef.current;
+    const useFresh = () => {
+      const age = forKey ? cachedAge(forKey) : Infinity;
+      if (age >= freshMs) return false;
+      lastLoad.current = Date.now() - age;
+      setState({ key: forKey, data: cached(forKey), error: null, loading: false, refreshing: false });
+      return true;
+    };
+    if (useFresh()) return;
+    // Already being loaded ahead (start-up or next page): wait for that instead of a second download.
+    const ahead = inflightFor(forKey);
+    if (ahead) {
+      ahead.then(() => { if (keyRef.current === forKey && !useFresh()) reload(); });
+      return;
+    }
+    reload();
+  }, [reload, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFocusEffect(
     useCallback(() => {
@@ -69,6 +88,6 @@ export function useLoader(load, deps, { intervalMs, key, refreshOnFocusMs = 1500
   );
 
   // Before the first answer for a new key arrives, show that key's cached copy.
-  const current = state.key === key ? state : { ...state, data: key ? cached(key) ?? null : null, loading: true, refreshing: false };
+  const current = state.key === key ? state : { ...state, error: null, data: key ? cached(key) ?? null : null, loading: true, refreshing: false };
   return { data: current.data, error: current.error, loading: current.loading, refreshing: current.refreshing, reload, refresh };
 }

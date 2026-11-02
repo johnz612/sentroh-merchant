@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Chip, Field, Label, Loading, Notice, Screen, s } from "@/components/ui";
+import { Body, Button, Card, Chip, Field, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
@@ -144,7 +144,7 @@ export default function ProductScreen() {
     setStockInput(toText(p.stockQty));
   }, [loaded.data]);
 
-  if (!creating && !product) return <Screen>{loaded.error ? <Notice error={loaded.error} /> : <Loading what="Loading product" />}</Screen>;
+  if (!creating && !product) return <Screen>{loaded.error ? <Notice error={loaded.error} /> : <Skeleton kind="cards" rows={4} pad={0} what="Loading product" />}</Screen>;
 
   const pos = product?.managedByPos === true;
   const set = (key) => (v) => { edited.current = true; setF({ ...f, [key]: v }); };

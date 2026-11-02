@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Card, Chip, Label, Loading, Notice, Pill, Screen, s } from "@/components/ui";
+import { Body, Card, Chip, Label, Notice, Pill, s, Screen, Skeleton } from "@/components/ui";
 import { money } from "@/lib/format";
 import { C } from "@/lib/theme";
 
@@ -45,7 +45,7 @@ export default function Earnings() {
   );
 
   if (!data || data.period?.key !== period) {
-    return <Screen edges={[]}>{chips}{error ? <Notice error={error} /> : <Loading what="Loading earnings" />}</Screen>;
+    return <Screen edges={[]}>{chips}{error ? <Notice error={error} /> : <Skeleton kind="cards" rows={4} pad={0} what="Loading earnings" />}</Screen>;
   }
 
   const { totals, pickup, delivery, owedBySentroh: owed, payouts, orders } = data;

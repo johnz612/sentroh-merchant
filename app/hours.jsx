@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Switch, Text, TextInput, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Field, Loading, Notice, Screen, s } from "@/components/ui";
+import { Body, Button, Card, Field, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached } from "@/lib/cache";
 import { C } from "@/lib/theme";
 
@@ -42,7 +42,7 @@ export default function Hours() {
     }));
   }, [data]);
 
-  if (!data) return <Screen>{error ? <Notice error={error} /> : <Loading what="Loading hours" />}</Screen>;
+  if (!data) return <Screen>{error ? <Notice error={error} /> : <Skeleton kind="cards" rows={4} pad={0} what="Loading hours" />}</Screen>;
 
   const update = (i, patch) => setDays((d) => d.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 

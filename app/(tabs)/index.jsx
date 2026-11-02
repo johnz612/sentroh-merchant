@@ -5,7 +5,7 @@ import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "rea
 
 import { useLoader, useStore } from "@/components/hooks";
 import { cached, prefetch } from "@/lib/cache";
-import { Card, Chip, Empty, Loading, Notice, Pill, s } from "@/components/ui";
+import { Card, Chip, Empty, Notice, Pill, s, Skeleton } from "@/components/ui";
 import { ago, clock, minutesLeft, money, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
 
@@ -51,8 +51,10 @@ export default function Orders() {
   const router = useRouter();
   const { storeId, call, keyFor } = useStore();
   const [filter, setFilter] = useState("NEW");
-  const newCount = useLoader(() => call("/orders", { query: { filter: "NEW", limit: 1 } }), [storeId],
-    { intervalMs: 20000, key: keyFor("/orders", { filter: "NEW", limit: 1 }) });
+  // The New tab's own list already has the count; the small count call is only for the other tabs.
+  const onNew = filter === "NEW";
+  const newCount = useLoader(() => (onNew ? Promise.resolve(null) : call("/orders", { query: { filter: "NEW", limit: 1 } })), [storeId, onNew],
+    { intervalMs: onNew ? undefined : 20000, key: onNew ? undefined : keyFor("/orders", { filter: "NEW", limit: 1 }) });
   const { data, error, loading, refreshing, reload, refresh } = useLoader(
     () => call("/orders", { query: { filter, limit: 50 } }), [storeId, filter],
     { intervalMs: 20000, key: keyFor("/orders", { filter, limit: 50 }) },
@@ -73,7 +75,7 @@ export default function Orders() {
     return () => sub.remove();
   }, [reload, reloadNew]);
 
-  const pending = newCount.data?.pagination?.total ?? 0;
+  const pending = (onNew ? data?.pagination?.total : newCount.data?.pagination?.total) ?? 0;
 
   return (
     <View style={{ flex: 1 }}>
@@ -85,7 +87,7 @@ export default function Orders() {
         </ScrollView>
       </View>
       {error ? <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><Notice error={error} /></View> : null}
-      {loading && !data ? <Loading what="Loading orders" /> : (
+      {loading && !data ? <Skeleton kind="cards" rows={5} what="Loading orders" /> : (
         <FlatList
           data={data?.orders || []}
           keyExtractor={(o) => o.id}

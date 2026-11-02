@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { C } from "@/lib/theme";
@@ -72,6 +73,44 @@ export function Notice({ error, children, kind = "error" }) {
   const look = { error: [s.notice, s.noticeError], ok: [s.notice, s.noticeOk], info: [s.notice, s.noticeInfo] }[error ? "error" : kind];
   return <Text style={look} accessibilityLiveRegion="polite">{text}</Text>;
 }
+
+/** Grey placeholder shapes shown while a screen loads for the first time (instead of a spinner). */
+export function Skeleton({ rows = 6, kind = "list", what = "Loading", pad = 16 }) {
+  const pulse = useRef(new Animated.Value(0.55)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0.55, duration: 700, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const bar = (width, height = 12, extra) => <View style={[{ width, height, borderRadius: 6, backgroundColor: SKELETON }, extra]} />;
+  return (
+    <Animated.View style={{ opacity: pulse, padding: pad }} accessible accessibilityLabel={`${what}…`}>
+      {Array.from({ length: rows }, (_, i) => (
+        kind === "list" ? (
+          <View key={i} style={[s.card, s.row, { paddingVertical: 10 }]}>
+            <View style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12, backgroundColor: SKELETON }} />
+            <View style={{ flex: 1 }}>
+              {bar("70%", 14)}
+              {bar("45%", 12, { marginTop: 8 })}
+            </View>
+          </View>
+        ) : (
+          <View key={i} style={s.card}>
+            {bar("35%", 12)}
+            {bar("85%", 14, { marginTop: 10 })}
+            {bar("60%", 14, { marginTop: 8 })}
+          </View>
+        )
+      ))}
+    </Animated.View>
+  );
+}
+
+const SKELETON = "#E3E9E7";
 
 export function Loading({ what = "Loading" }) {
   return (

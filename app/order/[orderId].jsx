@@ -4,7 +4,7 @@ import { Linking, Modal, Pressable, ScrollView, Text, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Chip, Field, Label, Loading, Notice, Pill, Screen, s } from "@/components/ui";
+import { Body, Button, Card, Chip, Field, Label, Notice, Pill, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached } from "@/lib/cache";
 import { clock, minutesLeft, money, qty, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
@@ -122,7 +122,7 @@ export default function OrderScreen() {
   const [accepting, setAccepting] = useState(false);
 
   if (error && !data) return <Screen><Notice error={error} /></Screen>;
-  if (!data) return <Screen><Loading what="Loading order" /></Screen>;
+  if (!data) return <Screen><Skeleton kind="cards" rows={4} pad={0} what="Loading order" /></Screen>;
 
   const o = data.order;
   const left = o.status === "PENDING" ? minutesLeft(o.acceptBy) : null;

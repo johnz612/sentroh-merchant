@@ -6,7 +6,7 @@ import { FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, T
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Chip, Empty, Loading, Notice, s } from "@/components/ui";
+import { Body, Button, Card, Chip, Empty, Loading, Notice, s, Skeleton } from "@/components/ui";
 import { cached, prefetch, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { C } from "@/lib/theme";
@@ -167,7 +167,7 @@ export default function Products() {
         <Notice kind="ok">{done}</Notice>
         <Notice error={failure || error} />
       </View>
-      {loading && items.length === 0 ? <Loading what="Loading products" /> : (
+      {loading && items.length === 0 ? <Skeleton rows={8} what="Loading products" /> : (
         <FlatList
           data={items}
           keyExtractor={(p) => p.id}

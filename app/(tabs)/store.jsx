@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pressable, Switch, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Chip, Label, Loading, Notice, Screen, s } from "@/components/ui";
+import { Body, Button, Card, Chip, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { clock, money } from "@/lib/format";
 import { unregisterPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
@@ -31,7 +31,7 @@ export default function Store() {
   const [busy, setBusy] = useState(null);
   const [failure, setFailure] = useState(null);
 
-  if (!data) return <Screen>{error ? <Notice error={error} /> : <Loading what="Loading store" />}</Screen>;
+  if (!data) return <Screen>{error ? <Notice error={error} /> : <Skeleton kind="cards" rows={4} pad={0} what="Loading store" />}</Screen>;
 
   const { merchant, branch, deposit, role } = data;
   const status = takingOrdersText(branch);
