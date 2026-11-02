@@ -1,11 +1,12 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Field, Label, Loading, Notice, Screen, s } from "@/components/ui";
+import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
@@ -107,10 +108,20 @@ export default function ProductScreen() {
   const { productId } = useLocalSearchParams();
   const creating = productId === "new";
   const router = useRouter();
-  const { storeId, store, call, canEdit } = useStore();
-  const loaded = useLoader(() => (creating ? Promise.resolve({ product: null }) : call(`/products/${productId}`)), [storeId, productId]);
-  const cats = useLoader(() => call("/categories"), [storeId]);
-  const [product, setProduct] = useState(null);
+  const { storeId, store, call, canEdit, keyFor } = useStore();
+  const productKey = creating ? undefined : keyFor(`/products/${productId}`);
+  const loaded = useLoader(() => (creating ? Promise.resolve({ product: null }) : call(`/products/${productId}`)), [storeId, productId], { key: productKey });
+  const cats = useLoader(() => call("/categories"), [storeId], { key: keyFor("/categories") });
+  const [product, setProductState] = useState(null);
+  // Typing is never overwritten by a background refresh.
+  const edited = useRef(false);
+
+  /** Shows the saved product and keeps the phone's copy and the lists up to date. */
+  function setProduct(p) {
+    setProductState((prev) => ({ ...p, images: p.images ?? prev?.images }));
+    updateCached(productKey, (d) => ({ ...d, product: { ...d.product, ...p, images: p.images ?? d.product?.images } }));
+    forgetCached(`${storeId}|/products?`);
+  }
   // Restaurants usually don't count dishes (like foodpanda and Grab); stores count stock.
   const [f, setF] = useState({ ...EMPTY, trackStock: store?.merchantType !== "FOOD_RESTAURANT" });
   const [stockInput, setStockInput] = useState("");
@@ -122,7 +133,8 @@ export default function ProductScreen() {
   useEffect(() => {
     const p = loaded.data?.product;
     if (!p) return;
-    setProduct(p);
+    setProductState(p);
+    if (edited.current) return;
     setF({
       name: p.name, displayName: toText(p.displayName), description: toText(p.description), brand: toText(p.brand),
       price: toText(p.price), stockQty: toText(p.stockQty), sellingType: p.sellingType || "UNIT", unitName: toText(p.unitName),
@@ -135,7 +147,7 @@ export default function ProductScreen() {
   if (!creating && !product) return <Screen>{loaded.error ? <Notice error={loaded.error} /> : <Loading what="Loading product" />}</Screen>;
 
   const pos = product?.managedByPos === true;
-  const set = (key) => (v) => setF({ ...f, [key]: v });
+  const set = (key) => (v) => { edited.current = true; setF({ ...f, [key]: v }); };
 
   function body() {
     const all = {
@@ -158,11 +170,13 @@ export default function ProductScreen() {
     try {
       if (creating) {
         const json = await call("/products", { method: "POST", body: body() });
+        forgetCached(`${storeId}|/products?`);
         router.replace(`/product/${json.product.id}`);
         return;
       }
       const json = await call(`/products/${product.id}`, { method: "PATCH", body: body() });
       setProduct(json.product);
+      edited.current = false;
       setDone("Saved.");
     } catch (err) {
       setError(err);
@@ -217,7 +231,7 @@ export default function ProductScreen() {
     Alert.alert("Remove this product?", "It disappears from your store. Past orders keep it.", [
       { text: "Keep", style: "cancel" },
       { text: "Remove", style: "destructive", onPress: async () => {
-        try { await call(`/products/${product.id}`, { method: "DELETE" }); router.back(); } catch (err) { setError(err); }
+        try { await call(`/products/${product.id}`, { method: "DELETE" }); forgetCached(`${storeId}|/products`); router.back(); } catch (err) { setError(err); }
       } },
     ]);
   }
@@ -300,7 +314,7 @@ export default function ProductScreen() {
           <Text style={[s.sub, { marginBottom: 8 }]}>Any staff can update this.</Text>
           <View style={s.row}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Field label={product.stockUnit === "KG" ? "In stock (kg)" : "In stock"} keyboardType="decimal-pad" value={stockInput} onChangeText={setStockInput} />
+              <Field label={product.stockUnit === "KG" ? "In stock (kg)" : "In stock"} keyboardType="decimal-pad" value={stockInput} onChangeText={(v) => { edited.current = true; setStockInput(v); }} />
             </View>
             <Button title="Update" kind="secondary" onPress={saveStock} style={{ marginTop: 8 }} />
           </View>

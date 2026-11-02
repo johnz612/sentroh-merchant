@@ -1,9 +1,10 @@
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
+import { cached, prefetch } from "@/lib/cache";
 import { Card, Chip, Empty, Loading, Notice, Pill, s } from "@/components/ui";
 import { ago, clock, minutesLeft, money, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
@@ -23,11 +24,11 @@ function fulfillment(o) {
   return "Express delivery";
 }
 
-function OrderRow({ order, onPress }) {
+const OrderRow = memo(function OrderRow({ order, onPress, onPressIn }) {
   const left = order.status === "PENDING" ? minutesLeft(order.acceptBy) : null;
   const isNew = order.status === "PENDING";
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable onPress={onPress} onPressIn={onPressIn} accessibilityRole="button">
       <Card tone={isNew ? "attention" : undefined}>
         <View style={[s.row, { justifyContent: "space-between" }]}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.ink }}>#{order.orderNumber}</Text>
@@ -44,16 +45,26 @@ function OrderRow({ order, onPress }) {
       </Card>
     </Pressable>
   );
-}
+});
 
 export default function Orders() {
   const router = useRouter();
-  const { storeId, call } = useStore();
+  const { storeId, call, keyFor } = useStore();
   const [filter, setFilter] = useState("NEW");
-  const newCount = useLoader(() => call("/orders", { query: { filter: "NEW", limit: 1 } }), [storeId], { intervalMs: 20000 });
-  const { data, error, loading, reload } = useLoader(
-    () => call("/orders", { query: { filter, limit: 50 } }), [storeId, filter], { intervalMs: 20000 },
+  const newCount = useLoader(() => call("/orders", { query: { filter: "NEW", limit: 1 } }), [storeId],
+    { intervalMs: 20000, key: keyFor("/orders", { filter: "NEW", limit: 1 }) });
+  const { data, error, loading, refreshing, reload, refresh } = useLoader(
+    () => call("/orders", { query: { filter, limit: 50 } }), [storeId, filter],
+    { intervalMs: 20000, key: keyFor("/orders", { filter, limit: 50 }) },
   );
+
+  // Open orders' details are fetched ahead, so tapping one opens instantly.
+  const loadOrder = (id) => prefetch(keyFor(`/orders/${id}`), () => call(`/orders/${id}`), { maxAgeMs: 15000 });
+  useEffect(() => {
+    for (const o of (data?.orders || []).slice(0, 8)) {
+      if (cached(keyFor(`/orders/${o.id}`))?.order?.status !== o.status) loadOrder(o.id);
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A new-order alert while the app is open refreshes the list right away.
   const reloadNew = newCount.reload;
@@ -79,8 +90,10 @@ export default function Orders() {
           data={data?.orders || []}
           keyExtractor={(o) => o.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={() => { reload(); reloadNew(); }} tintColor={C.teal} />}
-          renderItem={({ item }) => <OrderRow order={item} onPress={() => router.push(`/order/${item.id}`)} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refresh(); reloadNew(); }} tintColor={C.teal} />}
+          renderItem={({ item }) => <OrderRow order={item} onPressIn={() => loadOrder(item.id)} onPress={() => router.push(`/order/${item.id}`)} />}
+          initialNumToRender={10}
+          windowSize={7}
           ListEmptyComponent={
             filter === "NEW"
               ? <Empty title="No new orders">New orders appear here with a sound. Keep notifications on.</Empty>

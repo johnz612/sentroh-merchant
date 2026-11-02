@@ -23,11 +23,11 @@ function takingOrdersText(branch) {
 
 export default function Store() {
   const router = useRouter();
-  const { storeId, call, canEdit } = useStore();
+  const { storeId, call, canEdit, keyFor } = useStore();
   const stores = useSession((st) => st.stores);
   const selectStore = useSession((st) => st.selectStore);
   const phone = useSession((st) => st.phone);
-  const { data, error, reload } = useLoader(() => call("/store"), [storeId], { intervalMs: 60000 });
+  const { data, error, reload } = useLoader(() => call("/store"), [storeId], { intervalMs: 60000, key: keyFor("/store") });
   const [busy, setBusy] = useState(null);
   const [failure, setFailure] = useState(null);
 

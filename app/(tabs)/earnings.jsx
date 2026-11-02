@@ -22,11 +22,12 @@ function Line({ label, value, strong, minus }) {
 }
 
 export default function Earnings() {
-  const { storeId, call, canEdit } = useStore();
+  const { storeId, call, canEdit, keyFor } = useStore();
   const [period, setPeriod] = useState("TODAY");
   const { data, error } = useLoader(
     () => (canEdit ? call("/earnings", { query: { period } }) : Promise.resolve(null)),
     [storeId, period, canEdit],
+    { key: canEdit ? keyFor("/earnings", { period }) : undefined },
   );
 
   if (!canEdit) {

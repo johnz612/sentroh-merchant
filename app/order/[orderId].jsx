@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Field, Label, Loading, Notice, Pill, Screen, s } from "@/components/ui";
+import { forgetCached } from "@/lib/cache";
 import { clock, minutesLeft, money, qty, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
 
@@ -111,8 +112,9 @@ function StockIssueSheet({ order, onClose, onRun }) {
 
 export default function OrderScreen() {
   const { orderId } = useLocalSearchParams();
-  const { storeId, call } = useStore();
-  const { data, error, loading, reload } = useLoader(() => call(`/orders/${orderId}`), [storeId, orderId], { intervalMs: 20000 });
+  const { storeId, call, keyFor } = useStore();
+  const { data, error, loading, reload } = useLoader(() => call(`/orders/${orderId}`), [storeId, orderId],
+    { intervalMs: 20000, key: keyFor(`/orders/${orderId}`) });
   const [sheet, setSheet] = useState(null);
   const [stockSheet, setStockSheet] = useState(false);
   const [done, setDone] = useState(null);
@@ -129,6 +131,7 @@ export default function OrderScreen() {
   async function act(action, extra = {}) {
     setDone(null);
     await call(`/orders/${orderId}/actions`, { method: "POST", body: { action, ...extra } });
+    forgetCached(`${storeId}|/orders?`); // order lists reload when you go back
     setDone(`Order #${o.orderNumber}: ${STATUS_TEXT[{ ACCEPT: "PREPARING", REJECT: "CANCELLED", MARK_READY: "READY_FOR_PICKUP", MERCHANT_CANCEL: "CANCELLED", COMPLETE_PICKUP: "COMPLETED", REPORT_STOCK_ISSUE: "STOCK_ISSUE" }[action]]?.toLowerCase() || "updated"}.`);
     reload();
   }

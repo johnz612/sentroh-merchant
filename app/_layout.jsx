@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Button, Loading, Notice, Screen, Title } from "@/components/ui";
+import { clearCache } from "@/lib/cache";
 import { registerForPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
@@ -53,7 +54,10 @@ function Root() {
   useEffect(() => {
     load();
     const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") useSession.setState({ status: "signed-out", stores: [], storeId: null });
+      if (event === "SIGNED_OUT") {
+        clearCache();
+        useSession.setState({ status: "signed-out", stores: [], storeId: null });
+      }
     });
     return () => data.subscription.unsubscribe();
   }, [load]);

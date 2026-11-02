@@ -1,24 +1,25 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { useNavigation, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Empty, Loading, Notice, s } from "@/components/ui";
+import { cached, prefetch, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { C } from "@/lib/theme";
 
 const VIEWS = [["ALL", "All"], ["ON_SALE", "On sale"], ["OFF", "Off"], ["SOLD_OUT_TODAY", "Sold out today"], ["OUT_OF_STOCK", "Out of stock"], ["HIDDEN_BY_SENTROH", "Hidden by Sentroh"]];
 
 
-function ProductRow({ p, onToggle, onPress, toggling }) {
+const ProductRow = memo(function ProductRow({ p, onToggle, onOpen, onPrefetch, toggling }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable onPress={() => onOpen(p.id)} onPressIn={() => onPrefetch(p.id)} accessibilityRole="button">
       <View style={[s.card, s.row, { paddingVertical: 10 }]}>
         {p.imageUrl
-          ? <Image source={{ uri: p.imageUrl }} style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12 }} contentFit="cover" />
+          ? <Image source={{ uri: p.imageUrl }} style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12 }} contentFit="cover" cachePolicy="memory-disk" recyclingKey={p.id} transition={100} />
           : <View style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12, backgroundColor: C.paper, alignItems: "center", justifyContent: "center" }}><Ionicons name="image-outline" size={22} color={C.inkSoft} /></View>}
         <View style={{ flex: 1 }}>
           <Text style={[s.body, { fontWeight: "600" }]} numberOfLines={2}>{p.displayName || p.name}</Text>
@@ -33,7 +34,7 @@ function ProductRow({ p, onToggle, onPress, toggling }) {
       </View>
     </Pressable>
   );
-}
+});
 
 /** Turn a whole POS category on or off (only in-stock items when turning on). */
 function CategorySheet({ open, onClose, call, onDone }) {
@@ -82,12 +83,12 @@ function CategorySheet({ open, onClose, call, onDone }) {
 export default function Products() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { storeId, call, canEdit } = useStore();
+  const { storeId, call, canEdit, keyFor } = useStore();
   const [view, setView] = useState("ALL");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => cached(keyFor("/products", { view: "ALL", search: "", page: 1, limit: 40 }))?.products || []);
   const [toggling, setToggling] = useState(null);
   const [done, setDone] = useState(null);
   const [failure, setFailure] = useState(null);
@@ -96,14 +97,33 @@ export default function Products() {
   useEffect(() => { const t = setTimeout(() => setQuery(search.trim()), 350); return () => clearTimeout(t); }, [search]);
   useEffect(() => { setPage(1); }, [view, query, storeId]);
 
-  const { data, error, loading, reload } = useLoader(
-    () => call("/products", { query: { view, search: query, page, limit: 40 } }), [storeId, view, query, page],
+  const listQuery = (n) => ({ view, search: query, page: n, limit: 40 });
+  const { data, error, loading, refreshing, reload, refresh } = useLoader(
+    () => call("/products", { query: listQuery(page) }), [storeId, view, query, page],
+    { key: keyFor("/products", listQuery(page)) },
   );
 
+  const shownOnce = useRef(false);
   useEffect(() => {
     if (!data) return;
-    setItems((prev) => (page === 1 ? data.products : [...prev, ...data.products.filter((p) => !prev.some((x) => x.id === p.id))]));
-  }, [data, page]);
+    shownOnce.current = true;
+    setItems((prev) => {
+      if (page === 1) return data.products;
+      const seen = new Set(prev.map((x) => x.id));
+      return [...prev, ...data.products.filter((p) => !seen.has(p.id))];
+    });
+    // Fetch the next page ahead so scrolling never waits.
+    if (data.pagination?.hasNextPage) prefetch(keyFor("/products", listQuery(page + 1)), () => call("/products", { query: listQuery(page + 1) }));
+  }, [data, page]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back from a product that was changed: its list copy was dropped, so load page 1 again.
+  useFocusEffect(useCallback(() => {
+    if (!shownOnce.current || cached(keyFor("/products", listQuery(1))) !== undefined) return;
+    if (page === 1) reload(); else setPage(1);
+  }, [storeId, view, query, page])); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openProduct = useCallback((id) => router.push(`/product/${id}`), [router]);
+  const loadProduct = useCallback((id) => prefetch(keyFor(`/products/${id}`), () => call(`/products/${id}`), { maxAgeMs: 15000 }), [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -115,18 +135,22 @@ export default function Products() {
     });
   }, [navigation, canEdit, router]);
 
-  async function toggle(p, onSale) {
+  const toggle = useCallback(async (p, onSale) => {
     setToggling(p.id); setFailure(null); setDone(null);
     setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, onSale } : x)));
     try {
       await call("/products/on-sale", { method: "POST", body: { onSale, productIds: [p.id] } });
+      // Keep the phone's copy in step, so the list doesn't flip back when reopened.
+      for (let n = 1; n <= page; n++) {
+        updateCached(keyFor("/products", listQuery(n)), (d) => ({ ...d, products: d.products.map((x) => (x.id === p.id ? { ...x, onSale } : x)) }));
+      }
     } catch (err) {
       setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, onSale: !onSale } : x)));
       setFailure(err);
     } finally {
       setToggling(null);
     }
-  }
+  }, [storeId, view, query, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View style={{ flex: 1 }}>
@@ -148,11 +172,15 @@ export default function Products() {
           data={items}
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={loading && page === 1 && items.length > 0} onRefresh={() => (page === 1 ? reload() : setPage(1))} tintColor={C.teal} />}
-          renderItem={({ item }) => <ProductRow p={item} toggling={toggling === item.id} onToggle={toggle} onPress={() => router.push(`/product/${item.id}`)} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => (page === 1 ? refresh() : setPage(1))} tintColor={C.teal} />}
+          renderItem={({ item }) => <ProductRow p={item} toggling={toggling === item.id} onToggle={toggle} onPrefetch={loadProduct} onOpen={openProduct} />}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={9}
+          removeClippedSubviews
           onEndReached={() => { if (data?.pagination?.hasNextPage && !loading) setPage((n) => n + 1); }}
           onEndReachedThreshold={0.4}
-          ListFooterComponent={loading && items.length > 0 ? <Loading what="Loading more" /> : null}
+          ListFooterComponent={loading && !data && items.length > 0 ? <Loading what="Loading more" /> : null}
           ListEmptyComponent={<Empty title={query ? "No products match" : "No products here"}>{canEdit && !query ? "Tap + to add your first product." : null}</Empty>}
         />
       )}

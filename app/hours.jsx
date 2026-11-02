@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Switch, Text, TextInput, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Field, Loading, Notice, Screen, s } from "@/components/ui";
+import { forgetCached } from "@/lib/cache";
 import { C } from "@/lib/theme";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -18,8 +19,9 @@ function normalizeTime(v) {
 
 /** One opening period per day. (The API allows more, e.g. a lunch break; ask Sentroh for that.) */
 export default function Hours() {
-  const { storeId, call, canEdit } = useStore();
-  const { data, error } = useLoader(() => call("/hours"), [storeId]);
+  const { storeId, call, canEdit, keyFor } = useStore();
+  const { data, error, reload } = useLoader(() => call("/hours"), [storeId], { key: keyFor("/hours") });
+  const filled = useRef(false);
   const [days, setDays] = useState(DAYS.map(() => ({ open: true, opens: "06:00", closes: "22:00" })));
   const [cutoff, setCutoff] = useState("10");
   const [extraPeriods, setExtraPeriods] = useState(false);
@@ -28,7 +30,9 @@ export default function Hours() {
   const [done, setDone] = useState(null);
 
   useEffect(() => {
-    if (!data) return;
+    // Fill the form once (from the saved copy or the first answer); later refreshes never overwrite typing.
+    if (!data || filled.current) return;
+    filled.current = true;
     setCutoff(String(data.orderCutoffMinutes ?? 10));
     if (data.hours.length === 0) return;
     setExtraPeriods(DAYS.some((_, i) => data.hours.filter((h) => h.weekday === i + 1).length > 1));
@@ -61,6 +65,8 @@ export default function Hours() {
       await call("/hours", { method: "PUT", body: { hours, orderCutoffMinutes: minutes } });
       setDone(hours.length === 0 ? "Saved. Your store is closed all week." : "Hours saved.");
       setExtraPeriods(false);
+      forgetCached(`${storeId}|/store`); // store tab shows the new hours when you go back
+      reload();
     } catch (err) {
       setFailure(err);
     } finally {
