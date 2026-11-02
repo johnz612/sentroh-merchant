@@ -21,8 +21,8 @@ New-order alerts on Android need Firebase Cloud Messaging. Without it the app
 works; it just cannot receive alerts (orders still refresh every 20 seconds).
 - Firebase console > new project > add Android app `com.sentroh.merchant` >
   download `google-services.json` into this folder (it is git-ignored).
-- Add `"googleServicesFile": "./google-services.json"` under `expo.android` in
-  app.json, then `npx expo run:android` again.
+- app.json already points to it (`expo.android.googleServicesFile`), so the
+  file must exist before building. Then `npx expo run:android` again.
 - For Expo's push service: `npx eas-cli login`, `npx eas-cli init`, then
   `npx eas-cli credentials` > Android > Google Service Account > upload the FCM V1
   key (Firebase > Project settings > Service accounts > Generate new private key).

@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.sentroh.merchant",
+      "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_FINE_LOCATION",
