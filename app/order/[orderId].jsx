@@ -91,7 +91,7 @@ function StockIssueSheet({ order, onClose, onRun }) {
         <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
           <Text style={s.title}>What is short?</Text>
           <Body muted style={{ marginBottom: 12 }}>
-            Only fill in items you cannot give in full. The customer then accepts the smaller order or cancels. Delivery fees stay the same.
+            Only fill in items you cannot give in full. The customer then accepts the smaller order or cancels.
           </Body>
           {order.items.map((i) => (
             <Card key={i.id}>
@@ -150,11 +150,14 @@ export default function OrderScreen() {
             text={STATUS_TEXT[o.status] || o.status} />
           <Text style={s.sub}>Placed {clock(o.createdAt)}</Text>
         </View>
-        <Text style={{ fontSize: 28, fontWeight: "800", color: C.ink, marginTop: 8 }}>{money(o.totalAmount)}</Text>
+        <Text style={{ fontSize: 28, fontWeight: "800", color: C.ink, marginTop: 8 }}>{money(o.subtotal)}</Text>
+        <Text style={s.sub}>Items total</Text>
         <Body>
           {isPickup ? "Pickup at the store" : o.deliveryService === "STANDARD" ? `Standard delivery${o.standardDepartureAt ? `, driver comes for the ${clock(o.standardDepartureAt)} run` : ""}` : "Express delivery, a driver comes as soon as it is ready"}
         </Body>
-        <Body muted>{o.paymentMethod === "GCASH" ? "GCash" : "Cash"} on {isPickup ? "pickup (pay at the store)" : "delivery (pay the driver)"}</Body>
+        {isPickup
+          ? <Text style={[s.body, { fontWeight: "700", marginTop: 4 }]}>Collect {money(o.collectFromCustomer ?? o.subtotal)} from the customer ({o.paymentMethod === "GCASH" ? "GCash" : "cash"})</Text>
+          : <Body muted>The driver collects payment from the customer ({o.paymentMethod === "GCASH" ? "GCash" : "cash"}).</Body>}
         {o.status === "PENDING" && left !== null ? (
           <Text style={[s.body, { fontWeight: "700", color: C.mangoInk, marginTop: 6 }]}>
             {left === 0 ? "Accept now or it is cancelled." : `Accept within ${left} min or it is cancelled automatically.`}
@@ -208,17 +211,12 @@ export default function OrderScreen() {
         ))}
         <View style={{ marginTop: 8 }}>
           <Row label="Items" value={money(o.subtotal)} />
-          {!isPickup ? <Row label="Delivery fee" value={money((o.fees.baseDelivery || 0) + (o.fees.surchargeDelivery || 0))} /> : null}
-          {o.fees.smallOrder > 0 ? <Row label="Small-order fee" value={money(o.fees.smallOrder)} /> : null}
-          <Row label="Customer pays" value={money(o.totalAmount)} bold />
-          <View style={{ height: 1, backgroundColor: C.line, marginVertical: 6 }} />
-          <Row label="Your items" value={money(o.subtotal)} />
           <Row label="Sentroh commission" value={o.commissionAmount > 0 ? `− ${money(o.commissionAmount)}` : money(0)} />
-          <Row label="You earn" value={money((o.subtotal || 0) - (o.commissionAmount || 0))} bold />
+          <Row label="You earn" value={money(o.earnings ?? (o.subtotal || 0) - (o.commissionAmount || 0))} bold />
           <Text style={[s.sub, { marginTop: 4 }]}>
             {isPickup
               ? "The customer pays you at pickup. The commission comes out of your deposit."
-              : "The customer pays the driver. Sentroh sends your earnings in the weekly payout. Delivery fees go to the driver and Sentroh."}
+              : "Sentroh sends your earnings in the weekly payout."}
           </Text>
         </View>
       </Card>

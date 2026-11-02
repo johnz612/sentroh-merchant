@@ -32,7 +32,7 @@ const OrderRow = memo(function OrderRow({ order, onPress, onPressIn }) {
       <Card tone={isNew ? "attention" : undefined}>
         <View style={[s.row, { justifyContent: "space-between" }]}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.ink }}>#{order.orderNumber}</Text>
-          <Text style={[s.body, { fontWeight: "700" }]}>{money(order.totalAmount)}</Text>
+          <Text style={[s.body, { fontWeight: "700" }]}>{money(order.subtotal)}</Text>
         </View>
         <Text style={[s.body, { marginTop: 2 }]}>{order.customerName}, {order.itemCount} item{order.itemCount === 1 ? "" : "s"}</Text>
         <Text style={s.sub}>{fulfillment(order)}, {order.paymentMethod === "GCASH" ? "GCash" : "Cash"}</Text>
