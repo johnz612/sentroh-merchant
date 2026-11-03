@@ -111,6 +111,69 @@ function Photos({ product, call, canEdit, onChange }) {
   );
 }
 
+function pickRule(g) {
+  if (g.minSelect === 0) return `Optional, up to ${g.maxSelect}`;
+  return g.minSelect === g.maxSelect ? `Pick ${g.minSelect} (required)` : `Pick ${g.minSelect} to ${g.maxSelect} (required)`;
+}
+
+/**
+ * Sizes and add-ons of a dish. Owners and managers edit the groups; any
+ * staff can mark one choice sold out for today (tap it).
+ */
+function Choices({ product, call, canEdit, onChange }) {
+  const router = useRouter();
+  const [error, setError] = useState(null);
+  const groups = product.optionGroups || [];
+
+  async function soldOut(option, until) {
+    setError(null);
+    try {
+      await call("/options/sold-out", { method: "POST", body: { optionIds: [option.id], until } });
+      const json = await call(`/products/${product.id}`);
+      onChange(json.product);
+    } catch (err) { setError(err); }
+  }
+
+  function tap(group, option) {
+    Alert.alert(option.name, option.soldOutUntil ? "Sold out until midnight." : "", [
+      option.soldOutUntil
+        ? { text: "Available again now", onPress: () => soldOut(option, "CLEAR") }
+        : { text: "Sold out today", onPress: () => soldOut(option, "TODAY") },
+      ...(canEdit ? [{ text: `Edit ${group.name}`, onPress: () => router.push({ pathname: "/choice-group", params: { productId: product.id, groupId: group.id } }) }] : []),
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
+  return (
+    <Card>
+      <Label>Choices (sizes, add-ons)</Label>
+      <Text style={[s.sub, { marginBottom: 8 }]}>
+        {groups.length ? "Tap a choice to mark it sold out for today." : "Let customers pick a size, flavor or extras, each with its own added price."}
+      </Text>
+      {groups.map((g) => (
+        <View key={g.id} style={{ marginBottom: 10 }}>
+          <Pressable disabled={!canEdit} onPress={() => router.push({ pathname: "/choice-group", params: { productId: product.id, groupId: g.id } })}
+            accessibilityRole="button" style={[s.row, { justifyContent: "space-between", marginBottom: 4 }]}>
+            <Text style={[s.body, { fontWeight: "700", flex: 1 }]}>{g.name}{g.isActive === false ? " (hidden)" : ""}</Text>
+            <Text style={s.sub}>{pickRule(g)}{canEdit ? "  ›" : ""}</Text>
+          </Pressable>
+          {g.options.map((o) => (
+            <Pressable key={o.id} onPress={() => tap(g, o)} accessibilityRole="button"
+              style={[s.row, { justifyContent: "space-between", paddingVertical: 6, paddingLeft: 8 }]}>
+              <Text style={[s.body, { flex: 1 }, (o.isActive === false || o.soldOut) && { color: C.inkSoft }]}>
+                {o.name}{o.isActive === false ? " (off)" : ""}{o.soldOut ? " · sold out today" : ""}
+              </Text>
+              <Text style={s.body}>{Number(o.priceDelta) > 0 ? `+${money(o.priceDelta)}` : "free"}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ))}
+      <Notice error={error} />
+      {canEdit ? <Button title="Add choices" kind="secondary" onPress={() => router.push({ pathname: "/choice-group", params: { productId: product.id, groupId: "new" } })} /> : null}
+    </Card>
+  );
+}
+
 export default function ProductScreen() {
   const { productId } = useLocalSearchParams();
   const creating = productId === "new";
@@ -125,8 +188,8 @@ export default function ProductScreen() {
 
   /** Shows the saved product and keeps the phone's copy and the lists up to date. */
   function setProduct(p) {
-    setProductState((prev) => ({ ...p, images: p.images ?? prev?.images }));
-    updateCached(productKey, (d) => ({ ...d, product: { ...d.product, ...p, images: p.images ?? d.product?.images } }));
+    setProductState((prev) => ({ ...p, images: p.images ?? prev?.images, optionGroups: p.optionGroups ?? prev?.optionGroups }));
+    updateCached(productKey, (d) => ({ ...d, product: { ...d.product, ...p, images: p.images ?? d.product?.images, optionGroups: p.optionGroups ?? d.product?.optionGroups } }));
     forgetCached(`${storeId}|/products?`);
   }
   // Restaurants usually don't count dishes (like foodpanda and Grab); stores count stock.
@@ -278,6 +341,8 @@ export default function ProductScreen() {
       ) : null}
 
       {!creating ? <Photos product={product} call={call} canEdit={canEdit} onChange={setProduct} /> : null}
+
+      {!creating && !pos && product.sellingType === "UNIT" ? <Choices product={product} call={call} canEdit={canEdit} onChange={setProduct} /> : null}
 
       <Card>
         {pos ? (

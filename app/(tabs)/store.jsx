@@ -93,6 +93,20 @@ export default function Store() {
             onValueChange={(v) => settings({ acceptOrdersAutomatically: v }, "AUTO")}
             trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
         </View>
+        {merchant.merchantType === "FOOD_RESTAURANT" && branch ? (
+          <View style={{ marginTop: 12 }}>
+            <Text style={[s.body, { fontWeight: "600" }]}>Usual preparing time: {branch.prepMinutes ?? 20} min</Text>
+            <Text style={s.sub}>Customers see this as an estimate.</Text>
+            <View style={[s.row, { flexWrap: "wrap", marginTop: 6 }]}>
+              {[10, 15, 20, 30, 45, 60].map((m) => (
+                <View key={m} style={{ marginBottom: 6 }}>
+                  <Chip label={busy === `PREP${m}` ? "Saving…" : `${m} min`} active={(branch.prepMinutes ?? 20) === m}
+                    onPress={() => canEdit && settings({ prepMinutes: m }, `PREP${m}`)} />
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
         {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change these.</Text> : null}
       </Card>
       <Notice error={failure} />

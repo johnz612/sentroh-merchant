@@ -96,6 +96,8 @@ function StockIssueSheet({ order, onClose, onRun }) {
           {order.items.map((i) => (
             <Card key={i.id}>
               <Text style={[s.body, { fontWeight: "700" }]}>{i.name}</Text>
+              {i.choicesText ? <Text style={s.sub}>{i.choicesText}</Text> : null}
+              {i.note ? <Text style={s.sub}>Note: {i.note}</Text> : null}
               <Text style={s.sub}>Ordered {qty(i.qty, i.stockUnit)}</Text>
               <Field label={i.stockUnit === "KG" ? "You have (kg)" : "You have"} keyboardType="decimal-pad" placeholder="Leave empty if complete"
                 value={have[i.id] ?? ""} onChangeText={(v) => setHave({ ...have, [i.id]: v.replace(/[^0-9.]/g, "") })} />
@@ -205,6 +207,8 @@ export default function OrderScreen() {
               <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>{qty(i.qty, i.stockUnit)} {i.name}</Text>
               <Text style={s.body}>{money(i.lineTotal)}</Text>
             </View>
+            {i.choicesText ? <Text style={[s.body, { color: C.inkSoft }]}>{i.choicesText}</Text> : null}
+            {i.note ? <Text style={[s.body, { color: C.mangoInk, fontWeight: "600" }]}>Note: {i.note}</Text> : null}
             {i.availableQty != null && i.availableQty < i.qty ? <Text style={[s.sub, { color: C.mangoInk }]}>You have {i.availableQty}</Text> : null}
           </View>
         ))}
