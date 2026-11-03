@@ -111,6 +111,14 @@ export default function Store() {
       </Card>
       <Notice error={failure} />
 
+      <Pressable onPress={() => router.push("/verification")} accessibilityRole="button">
+        <Card tone={merchant.isVerified ? undefined : "attention"}>
+          <Label>Verified badge</Label>
+          <Body>{merchant.isVerified ? "Verified by Sentroh." : "Not verified yet. Upload your DTI/SEC, mayor's permit and BIR 2303."}</Body>
+          <Text style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 4 }]}>{canEdit ? "View or upload papers" : "View"}</Text>
+        </Card>
+      </Pressable>
+
       <Pressable onPress={() => router.push("/hours")} accessibilityRole="button">
         <Card>
           <Label>Store hours</Label>

@@ -226,7 +226,7 @@ export default function OrderScreen() {
 
       <Card>
         <Label>Customer</Label>
-        <Body>{o.customerName}</Body>
+        <Body>{o.customerName}{o.customerVerified ? " · Verified customer" : ""}</Body>
         {o.customerPhone ? (
           <Pressable onPress={() => Linking.openURL(`tel:${o.customerPhone}`)}><Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Call {o.customerPhone}</Text></Pressable>
         ) : null}
