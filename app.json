@@ -11,9 +11,9 @@
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -54,7 +54,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Sentroh uses your photos to show your products to customers.",
-          "cameraPermission": "Sentroh uses the camera to take product photos."
+          "cameraPermission": "Sentroh uses the camera to take product photos.",
+          "microphonePermission": false
         }
       ]
     ],
@@ -62,8 +63,12 @@
       "typedRoutes": false
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "03f7c6d3-4ca8-4be1-978b-53d8ffe0dba7"
+      }
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "owner": "johns612"
   }
 }
