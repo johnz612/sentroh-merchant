@@ -199,6 +199,17 @@ export default function OrderScreen() {
           onPress={() => setSheet({ title: "Cancel this order?", confirm: "Cancel order", danger: true, noteRequired: true, run: (v) => act("MERCHANT_CANCEL", v) })} />
       ) : null}
 
+      {o.posItemCount > 0 && ["PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"].includes(o.status) ? (
+        <Card tone="attention">
+          <Label>Ring it up in Hatid POS</Label>
+          <Body>
+            Scan the {o.posItemCount === o.items.length ? "items" : `${o.posItemCount} POS item${o.posItemCount === 1 ? "" : "s"}`} in Hatid POS
+            as a sale and put the receipt in the bag. The POS stock goes down and Sentroh updates within a minute.
+            {o.posItemCount < o.items.length ? " Items marked \"Sentroh only\" are not in the POS; Sentroh counts their stock." : ""}
+          </Body>
+        </Card>
+      ) : null}
+
       <Card>
         <Label>Items</Label>
         {o.items.map((i) => (
@@ -207,6 +218,7 @@ export default function OrderScreen() {
               <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>{qty(i.qty, i.stockUnit)} {i.name}</Text>
               <Text style={s.body}>{money(i.lineTotal)}</Text>
             </View>
+            {o.posItemCount > 0 && i.fromPos === false ? <Text style={[s.sub, { color: C.teal, fontWeight: "600" }]}>Sentroh only (not in POS)</Text> : null}
             {i.choicesText ? <Text style={[s.body, { color: C.inkSoft }]}>{i.choicesText}</Text> : null}
             {i.note ? <Text style={[s.body, { color: C.mangoInk, fontWeight: "600" }]}>Note: {i.note}</Text> : null}
             {i.availableQty != null && i.availableQty < i.qty ? <Text style={[s.sub, { color: C.mangoInk }]}>You have {i.availableQty}</Text> : null}
