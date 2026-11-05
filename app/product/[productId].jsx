@@ -42,13 +42,13 @@ function Photos({ product, call, canEdit, onChange }) {
     setBusy(true);
     try {
       // Shrunk on the phone first: a ≤1280 px photo and a 320 px copy for lists (both JPEG).
-      const { photo, thumb } = await prepareProductPhoto(asset);
-      const contentType = "image/jpeg";
+      // An app installed before the shrinking module uploads the photo as picked, without a thumbnail.
+      const { photo, thumb, contentType } = await prepareProductPhoto(asset);
       const { upload, thumbUpload } = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType } });
       const bucket = supabase.storage.from("product-images");
       const [up, upThumb] = await Promise.all([
         bucket.uploadToSignedUrl(upload.path, upload.token, await fileBytes(photo.uri), { contentType }),
-        thumbUpload ? bucket.uploadToSignedUrl(thumbUpload.path, thumbUpload.token, await fileBytes(thumb.uri), { contentType }) : { error: null },
+        thumbUpload && thumb ? bucket.uploadToSignedUrl(thumbUpload.path, thumbUpload.token, await fileBytes(thumb.uri), { contentType: "image/jpeg" }) : { error: true },
       ]);
       if (up.error) throw new Error("The photo did not upload. Check your connection and try again.");
       // A failed small copy is not fatal: lists then use the full photo.
