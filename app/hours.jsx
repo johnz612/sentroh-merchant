@@ -9,20 +9,23 @@ import { C } from "@/lib/theme";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** "6:00" / "06:00" / "6" -> "06:00", or null. */
-function normalizeTime(v) {
+/** "6:00" / "06:00" / "6" -> "06:00", or null. A closing time may be "24:00" (midnight). */
+function normalizeTime(v, closing = false) {
   const m = String(v || "").trim().match(/^(\d{1,2})(?::(\d{2}))?$/);
   if (!m) return null;
   const t = `${m[1].padStart(2, "0")}:${m[2] || "00"}`;
+  if (closing && t === "24:00") return t;
   return TIME.test(t) ? t : null;
 }
+
+const isAllDay = (h) => h.opens === "00:00" && h.closes === "24:00";
 
 /** One opening period per day. (The API allows more, e.g. a lunch break; ask Sentroh for that.) */
 export default function Hours() {
   const { storeId, call, canEdit, keyFor } = useStore();
   const { data, error, reload } = useLoader(() => call("/hours"), [storeId], { key: keyFor("/hours") });
   const filled = useRef(false);
-  const [days, setDays] = useState(DAYS.map(() => ({ open: true, opens: "06:00", closes: "22:00" })));
+  const [days, setDays] = useState(DAYS.map(() => ({ open: true, allDay: false, opens: "06:00", closes: "22:00" })));
   const [cutoff, setCutoff] = useState("10");
   const [extraPeriods, setExtraPeriods] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,7 +41,10 @@ export default function Hours() {
     setExtraPeriods(DAYS.some((_, i) => data.hours.filter((h) => h.weekday === i + 1).length > 1));
     setDays(DAYS.map((_, i) => {
       const first = data.hours.find((h) => h.weekday === i + 1);
-      return first ? { open: true, opens: first.opens, closes: first.closes } : { open: false, opens: "06:00", closes: "22:00" };
+      if (!first) return { open: false, allDay: false, opens: "06:00", closes: "22:00" };
+      return isAllDay(first)
+        ? { open: true, allDay: true, opens: "06:00", closes: "22:00" }
+        : { open: true, allDay: false, opens: first.opens, closes: first.closes };
     }));
   }, [data]);
 
@@ -51,8 +57,12 @@ export default function Hours() {
     const hours = [];
     for (let i = 0; i < 7; i += 1) {
       if (!days[i].open) continue;
+      if (days[i].allDay) {
+        hours.push({ weekday: i + 1, opens: "00:00", closes: "24:00" });
+        continue;
+      }
       const opens = normalizeTime(days[i].opens);
-      const closes = normalizeTime(days[i].closes);
+      const closes = normalizeTime(days[i].closes, true);
       if (!opens || !closes) return setFailure(new Error(`${DAYS[i]}: use times like 06:00 and 22:00 (24-hour).`));
       if (closes <= opens) return setFailure(new Error(`${DAYS[i]}: closing must be after opening, the same day.`));
       hours.push({ weekday: i + 1, opens, closes });
@@ -76,7 +86,7 @@ export default function Hours() {
 
   return (
     <Screen>
-      <Body muted style={{ marginBottom: 12 }}>Philippine time, 24-hour clock (22:00 = 10 PM). Customers can browse while you are closed, but can't order.</Body>
+      <Body muted style={{ marginBottom: 12 }}>Philippine time, 24-hour clock (22:00 = 10 PM; 24:00 = midnight). Customers can browse while you are closed, but can't order.</Body>
       {extraPeriods ? <Notice kind="info">Some days have more than one opening period. Saving here keeps only the first period of each day.</Notice> : null}
       <Notice kind="ok">{done}</Notice>
 
@@ -90,6 +100,13 @@ export default function Hours() {
             </View>
           </View>
           {days[i].open ? (
+            <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
+              <Text style={s.sub}>Open 24 hours</Text>
+              <Switch value={days[i].allDay} disabled={!canEdit} onValueChange={(v) => update(i, { allDay: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff"
+                accessibilityLabel={`${day} open 24 hours`} />
+            </View>
+          ) : null}
+          {days[i].open && !days[i].allDay ? (
             <View style={[s.row, { marginTop: 8 }]}>
               <TextInput style={[s.input, { flex: 1 }]} value={days[i].opens} editable={canEdit} onChangeText={(v) => update(i, { opens: v })} keyboardType="numbers-and-punctuation" accessibilityLabel={`${day} opens`} />
               <Text style={[s.body, { marginHorizontal: 10 }]}>to</Text>
@@ -105,7 +122,7 @@ export default function Hours() {
       ))}
 
       <Card>
-        <Field label="Last orders, minutes before closing" hint="Gives you time to prepare the last orders. 10 is a good start." keyboardType="number-pad"
+        <Field label="Last orders, minutes before closing" hint="Gives you time to prepare the last orders. 10 is a good start. Not used on days open 24 hours." keyboardType="number-pad"
           value={cutoff} onChangeText={setCutoff} editable={canEdit} />
       </Card>
 

@@ -16,6 +16,7 @@ function takingOrdersText(branch) {
   const now = branch?.now;
   if (branch?.ordersPausedUntil) return { tone: "attention", text: `Paused until ${clock(branch.ordersPausedUntil)}` };
   if (!now?.hasHours) return { tone: "danger", text: "No store hours yet. Customers cannot order." };
+  if (now.acceptingOrders && (now.isOpenAllDay || !now.lastOrderAt)) return { tone: undefined, text: "Open 24 hours today. Taking orders." };
   if (now.acceptingOrders) return { tone: undefined, text: `Taking orders until ${clock(now.lastOrderAt)}` };
   if (now.isOpen) return { tone: "attention", text: `Last orders were at ${clock(now.lastOrderAt)}. Closing ${clock(now.closesAt)}.` };
   return { tone: "attention", text: now.nextOpensAt ? `Closed. Orders open again ${clock(now.nextOpensAt)}.` : "Closed." };
