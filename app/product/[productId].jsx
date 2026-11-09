@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
-import { Body, Button, Card, Chip, Field, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
+import { Body, Button, Card, Chip, Field, FieldTag, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { PhotoEditor } from "@/components/PhotoEditor";
@@ -316,7 +316,22 @@ export default function ProductScreen() {
     return Object.fromEntries(keys.map((k) => [k, all[k]]));
   }
 
+  /** Required fields that are still empty (POS products get name and price from the POS). */
+  function missingRequired() {
+    if (pos) return [];
+    const missing = [];
+    if (!f.name.trim()) missing.push("Name");
+    if (toNumber(f.price) == null || !(toNumber(f.price) > 0)) missing.push("Price");
+    return missing;
+  }
+
   async function save() {
+    const missing = missingRequired();
+    if (missing.length) {
+      setDone(null);
+      setError(new Error(`Fill in the required ${missing.length > 1 ? "fields" : "field"}: ${missing.join(" and ")}.`));
+      return;
+    }
     setBusy(true); setError(null); setDone(null);
     try {
       if (creating) {
@@ -432,17 +447,19 @@ export default function ProductScreen() {
             <Body style={{ fontWeight: "700" }}>{product.name}</Body>
             <Body muted>{money(product.price)}, {product.stockQty}{product.stockUnit === "KG" ? " kg" : ""} in stock</Body>
             <View style={{ height: 12 }} />
-            <Field label="Name shown online" hint="Optional. Leave empty to use the POS name." value={f.displayName} onChangeText={set("displayName")} editable={canEdit} />
+            <Field label="Name shown online" optional hint="The name customers see. Leave empty to use the POS name." value={f.displayName} onChangeText={set("displayName")} editable={canEdit} />
           </>
         ) : (
           <>
-            <Field label="Name" value={f.name} onChangeText={set("name")} editable={canEdit} />
-            <Text style={s.label}>Sold</Text>
+            <Field label="Name" required hint="What customers see, e.g. Chicken Burger or Coke 1.5 L." placeholder="e.g. Chicken Burger" value={f.name} onChangeText={set("name")} editable={canEdit} />
+            <Text style={s.label}>Sold<FieldTag required /></Text>
+            <Text style={[s.sub, { marginBottom: 4 }]}>Per piece: customers order whole items. By weight: customers order kilos, like rice or meat.</Text>
             <View style={[s.row, { marginBottom: 12 }]}>
               <Chip label="Per piece" active={f.sellingType === "UNIT"} onPress={() => canEdit && set("sellingType")("UNIT")} />
               <Chip label="By weight (kg)" active={f.sellingType === "WEIGHT"} onPress={() => canEdit && set("sellingType")("WEIGHT")} />
             </View>
-            <Field label={f.sellingType === "WEIGHT" ? "Price per kg (₱)" : "Price (₱)"} keyboardType="decimal-pad" value={f.price} onChangeText={set("price")} editable={canEdit} />
+            <Field label={f.sellingType === "WEIGHT" ? "Price per kg (₱)" : "Price (₱)"} required
+              hint={f.sellingType === "WEIGHT" ? "What the customer pays for 1 kg." : "What the customer pays for one piece."} keyboardType="decimal-pad" value={f.price} onChangeText={set("price")} editable={canEdit} />
             <View style={[s.row, { justifyContent: "space-between", marginBottom: 12 }]}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={[s.body, { fontWeight: "600" }]}>Count stock</Text>
@@ -451,14 +468,14 @@ export default function ProductScreen() {
               <Switch value={f.trackStock} disabled={!canEdit} onValueChange={set("trackStock")} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
             </View>
             {creating && f.trackStock ? (
-              <Field label={f.sellingType === "WEIGHT" ? "Stock (kg)" : "Stock"} keyboardType="decimal-pad" value={f.stockQty} onChangeText={set("stockQty")} />
+              <Field label={f.sellingType === "WEIGHT" ? "Stock (kg)" : "Stock"} optional hint="How many you have now. Empty means 0, and customers can't order it until you add stock." keyboardType="decimal-pad" value={f.stockQty} onChangeText={set("stockQty")} />
             ) : null}
-            <Field label="Brand" value={f.brand} onChangeText={set("brand")} editable={canEdit} />
-            <Field label="Unit or size" hint="For example 1 L bottle, 500 g pack, small plate." value={f.unitName} onChangeText={set("unitName")} editable={canEdit} />
-            <Field label="Your code (SKU)" value={f.merchantSku} onChangeText={set("merchantSku")} editable={canEdit} />
+            <Field label="Brand" optional hint="e.g. Nestlé, Lucky Me. Customers can search by brand." value={f.brand} onChangeText={set("brand")} editable={canEdit} />
+            <Field label="Unit or size" optional hint="Shown next to the price, e.g. 1 L bottle, 500 g pack, small plate." value={f.unitName} onChangeText={set("unitName")} editable={canEdit} />
+            <Field label="Your code (SKU)" optional hint="Your own product code for your records. Customers don't see it." value={f.merchantSku} onChangeText={set("merchantSku")} editable={canEdit} />
           </>
         )}
-        <Field label="Description" value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
+        <Field label="Description" optional hint="What's in it, flavor, size or how it's served. Shown on the product page." value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
       </Card>
 
       {!creating && !pos && product.trackStock ? (
@@ -475,7 +492,8 @@ export default function ProductScreen() {
       ) : null}
 
       <Card>
-        <Label>Category</Label>
+        <Text style={s.label}>Category<FieldTag /></Text>
+        <Text style={[s.sub, { marginBottom: 8 }]}>Groups your products into sections customers browse, like Burgers or Drinks. Tap one to choose it.</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
           <View style={{ marginBottom: 8 }}><Chip label="None" active={!f.categoryId} onPress={() => canEdit && set("categoryId")(null)} /></View>
           {storeCategories.map((c) => (
@@ -485,15 +503,15 @@ export default function ProductScreen() {
         {pos && product.posCategoryName ? <Text style={[s.sub, { marginBottom: 8 }]}>POS category: {product.posCategoryName}. Customers see this unless you pick one above.</Text> : null}
         {canEdit ? (
           <View style={s.row}>
-            <View style={{ flex: 1, marginRight: 8 }}><Field label="New category" value={newCategory} onChangeText={setNewCategory} placeholder="e.g. Rice meals" /></View>
+            <View style={{ flex: 1, marginRight: 8 }}><Field label="New category" hint="Type a name, tap Add, then tap it above." value={newCategory} onChangeText={setNewCategory} placeholder="e.g. Rice meals" /></View>
             <Button title="Add" kind="secondary" onPress={addCategory} style={{ marginTop: 8 }} />
           </View>
         ) : null}
       </Card>
 
       <Card>
-        <Field label="Most per delivery order" hint="Optional limit, e.g. 2 for bulky items." keyboardType="number-pad" value={f.maxDeliveryQty} onChangeText={set("maxDeliveryQty")} editable={canEdit} />
-        <Field label="Preparation time (minutes)" hint="Optional, mostly for food." keyboardType="number-pad" value={f.prepTimeMinutes} onChangeText={set("prepTimeMinutes")} editable={canEdit} />
+        <Field label="Most per delivery order" optional hint="The most a customer can get in one delivery, e.g. 2 for a 25 kg rice sack. Empty means no limit." keyboardType="number-pad" value={f.maxDeliveryQty} onChangeText={set("maxDeliveryQty")} editable={canEdit} />
+        <Field label="Preparation time (minutes)" optional hint="Mostly for food: minutes you need to make it after you accept the order. It is added to the customer's waiting time. Empty for ready-made items." keyboardType="number-pad" value={f.prepTimeMinutes} onChangeText={set("prepTimeMinutes")} editable={canEdit} />
       </Card>
 
       <Notice error={error} />

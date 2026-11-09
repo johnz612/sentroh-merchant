@@ -2,7 +2,7 @@ import * as Location from "expo-location";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { Button, Card, Chip, Field, Notice, Screen, Title, s } from "@/components/ui";
+import { Button, Card, Chip, Field, FieldTag, Notice, Screen, Title, s } from "@/components/ui";
 import { api } from "@/lib/api";
 import { unregisterPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
@@ -66,9 +66,10 @@ export default function Register() {
       </Title>
 
       <Card>
-        <Field label="Your full name" value={f.ownerName} onChangeText={set("ownerName")} autoCapitalize="words" />
-        <Field label="Store name" value={f.businessName} onChangeText={set("businessName")} />
-        <Text style={s.label}>Type of store</Text>
+        <Field label="Your full name" required hint="The owner. Sentroh uses it to check and contact the store." value={f.ownerName} onChangeText={set("ownerName")} autoCapitalize="words" />
+        <Field label="Store name" required hint="The name customers see in Sentroh." value={f.businessName} onChangeText={set("businessName")} />
+        <Text style={s.label}>Type of store<FieldTag required /></Text>
+        <Text style={[s.sub, { marginBottom: 4 }]}>Restaurants get menus with sizes and add-ons, and preparing time.</Text>
         <View style={[s.row, { marginBottom: 12 }]}>
           <Chip label="Store / retail" active={f.merchantType === "RETAIL_GOODS"} onPress={() => set("merchantType")("RETAIL_GOODS")} />
           <Chip label="Restaurant / food" active={f.merchantType === "FOOD_RESTAURANT"} onPress={() => set("merchantType")("FOOD_RESTAURANT")} />
@@ -76,11 +77,11 @@ export default function Register() {
       </Card>
 
       <Card>
-        <Field label="Street address" placeholder="Purok, street, landmark" value={f.addressLine1} onChangeText={set("addressLine1")} />
-        <Field label="Barangay" value={f.barangay} onChangeText={set("barangay")} />
-        <Field label="Municipality / city" value={f.municipality} onChangeText={set("municipality")} />
-        <Field label="Province" value={f.province} onChangeText={set("province")} />
-        <Text style={s.label}>Store location</Text>
+        <Field label="Street address" required hint="Helps drivers and customers find the store." placeholder="Purok, street, landmark" value={f.addressLine1} onChangeText={set("addressLine1")} />
+        <Field label="Barangay" required value={f.barangay} onChangeText={set("barangay")} />
+        <Field label="Municipality / city" required value={f.municipality} onChangeText={set("municipality")} />
+        <Field label="Province" required value={f.province} onChangeText={set("province")} />
+        <Text style={s.label}>Store location<FieldTag required /></Text>
         <Text style={[s.sub, { marginBottom: 8 }]}>Stand inside your store and tap the button. Drivers use this pin to find you.</Text>
         {pin ? (
           <Text style={[s.body, { marginBottom: 8, color: C.green }]}>

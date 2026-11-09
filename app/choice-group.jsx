@@ -110,7 +110,7 @@ export default function ChoiceGroupScreen() {
       {product ? <Text style={[s.sub, { marginBottom: 8 }]}>For {product.displayName || product.name}</Text> : null}
 
       <Card>
-        <Field label="Group name" placeholder="e.g. Size, Flavor, Add-ons" value={f.name} onChangeText={(v) => change({ name: v })} editable={canEdit} maxLength={60} />
+        <Field label="Group name" required hint="What the customer is choosing." placeholder="e.g. Size, Flavor, Add-ons" value={f.name} onChangeText={(v) => change({ name: v })} editable={canEdit} maxLength={60} />
         <Text style={s.label}>How many can the customer pick?</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
           {PRESETS.map((p) => (
@@ -137,7 +137,7 @@ export default function ChoiceGroupScreen() {
           <View key={o.key} style={{ borderTopWidth: i ? 1 : 0, borderTopColor: C.line, paddingTop: i ? 10 : 0, marginBottom: 6 }}>
             <View style={s.row}>
               <View style={{ flex: 2, marginRight: 8 }}>
-                <Field label={`Choice ${i + 1}`} placeholder={i === 0 ? "e.g. Regular" : "e.g. Large"} value={o.name} onChangeText={(v) => changeOption(o.key, { name: v })} editable={canEdit} maxLength={60} />
+                <Field label={`Choice ${i + 1}`} required placeholder={i === 0 ? "e.g. Regular" : "e.g. Large"} value={o.name} onChangeText={(v) => changeOption(o.key, { name: v })} editable={canEdit} maxLength={60} />
               </View>
               <View style={{ flex: 1 }}>
                 <Field label="+ ₱" keyboardType="decimal-pad" value={o.priceDelta} onChangeText={(v) => changeOption(o.key, { priceDelta: v })} editable={canEdit} />

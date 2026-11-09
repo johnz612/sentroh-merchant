@@ -57,10 +57,18 @@ export function Chip({ label, active, onPress, count }) {
   );
 }
 
-export function Field({ label, hint, ...props }) {
+/** Small "Required" or "Optional" tag after a field's label. */
+export function FieldTag({ required }) {
+  return required
+    ? <Text style={{ color: C.red, fontWeight: "700" }}>  Required</Text>
+    : <Text style={{ color: C.inkSoft, fontWeight: "400" }}>  Optional</Text>;
+}
+
+/** Text field. `required` or `optional` adds a tag after the label; `hint` explains the field below it. */
+export function Field({ label, hint, required, optional, ...props }) {
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={s.label}>{label}</Text>
+      <Text style={s.label}>{label}{required || optional ? <FieldTag required={!!required} /> : null}</Text>
       {hint ? <Text style={[s.sub, { marginBottom: 4 }]}>{hint}</Text> : null}
       <TextInput placeholderTextColor="#8A97A8" style={[s.input, props.editable === false && { backgroundColor: C.paper, color: C.inkSoft }]} {...props} />
     </View>
