@@ -10,6 +10,7 @@ import { Body, Button, Card, Chip, Empty, Loading, Notice, s, Skeleton } from "@
 import { cached, prefetch, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { C } from "@/lib/theme";
+import { toast } from "@/lib/toast";
 
 const VIEWS = [["ALL", "All"], ["ON_SALE", "On sale"], ["OFF", "Off"], ["SOLD_OUT_TODAY", "Sold out today"], ["OUT_OF_STOCK", "Out of stock"], ["HIDDEN_BY_SENTROH", "Hidden by Sentroh"]];
 
@@ -95,7 +96,6 @@ export default function Products() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState(() => cached(keyFor("/products", { view: "ALL", search: "", page: 1, limit: 40 }))?.products || []);
   const [toggling, setToggling] = useState(null);
-  const [done, setDone] = useState(null);
   const [failure, setFailure] = useState(null);
   const [categories, setCategories] = useState(false);
 
@@ -141,7 +141,7 @@ export default function Products() {
   }, [navigation, canEdit, router]);
 
   const toggle = useCallback(async (p, onSale) => {
-    setToggling(p.id); setFailure(null); setDone(null);
+    setToggling(p.id); setFailure(null);
     setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, onSale } : x)));
     try {
       await call("/products/on-sale", { method: "POST", body: { onSale, productIds: [p.id] } });
@@ -169,7 +169,6 @@ export default function Products() {
         </ScrollView>
       </View>
       <View style={{ paddingHorizontal: 16 }}>
-        <Notice kind="ok">{done}</Notice>
         <Notice error={failure || error} />
       </View>
       {loading && items.length === 0 ? <Skeleton rows={8} what="Loading products" /> : (
@@ -189,7 +188,7 @@ export default function Products() {
           ListEmptyComponent={<Empty title={query ? "No products match" : "No products here"}>{canEdit && !query ? "Tap + to add your first product." : null}</Empty>}
         />
       )}
-      <CategorySheet open={categories} call={call} onClose={() => { setCategories(false); setPage(1); reload(); }} onDone={setDone} />
+      <CategorySheet open={categories} call={call} onClose={() => { setCategories(false); setPage(1); reload(); }} onDone={toast} />
     </View>
   );
 }

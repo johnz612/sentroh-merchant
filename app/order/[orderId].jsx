@@ -8,6 +8,7 @@ import { Body, Button, Card, Chip, Field, Label, Notice, Pill, s, Screen, Skelet
 import { forgetCached } from "@/lib/cache";
 import { clock, minutesLeft, money, qty, STATUS_TEXT } from "@/lib/format";
 import { C } from "@/lib/theme";
+import { toast } from "@/lib/toast";
 
 /** Bottom sheet with a note (and payment choice for pickups) before an action runs. */
 function ActionSheet({ sheet, onClose, onRun }) {
@@ -119,7 +120,6 @@ export default function OrderScreen() {
     { intervalMs: 20000, key: keyFor(`/orders/${orderId}`) });
   const [sheet, setSheet] = useState(null);
   const [stockSheet, setStockSheet] = useState(false);
-  const [done, setDone] = useState(null);
   const [failure, setFailure] = useState(null);
   const [accepting, setAccepting] = useState(false);
 
@@ -131,10 +131,9 @@ export default function OrderScreen() {
   const isPickup = o.fulfillmentType === "PICKUP";
 
   async function act(action, extra = {}) {
-    setDone(null);
     await call(`/orders/${orderId}/actions`, { method: "POST", body: { action, ...extra } });
     forgetCached(`${storeId}|/orders?`); // order lists reload when you go back
-    setDone(`Order #${o.orderNumber}: ${STATUS_TEXT[{ ACCEPT: "PREPARING", REJECT: "CANCELLED", MARK_READY: "READY_FOR_PICKUP", MERCHANT_CANCEL: "CANCELLED", COMPLETE_PICKUP: "COMPLETED", REPORT_STOCK_ISSUE: "STOCK_ISSUE" }[action]]?.toLowerCase() || "updated"}.`);
+    toast(`Order #${o.orderNumber}: ${STATUS_TEXT[{ ACCEPT: "PREPARING", REJECT: "CANCELLED", MARK_READY: "READY_FOR_PICKUP", MERCHANT_CANCEL: "CANCELLED", COMPLETE_PICKUP: "COMPLETED", REPORT_STOCK_ISSUE: "STOCK_ISSUE" }[action]]?.toLowerCase() || "updated"}.`);
     reload();
   }
 
@@ -142,7 +141,6 @@ export default function OrderScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: `Order #${o.orderNumber}` }} />
-      <Notice kind="ok">{done}</Notice>
       <Notice error={failure} />
 
       <Card tone={o.status === "PENDING" ? "attention" : undefined}>

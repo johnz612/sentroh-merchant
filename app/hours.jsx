@@ -5,6 +5,7 @@ import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Field, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached } from "@/lib/cache";
 import { C } from "@/lib/theme";
+import { toast } from "@/lib/toast";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -30,7 +31,6 @@ export default function Hours() {
   const [extraPeriods, setExtraPeriods] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(null);
-  const [done, setDone] = useState(null);
 
   useEffect(() => {
     // Fill the form once (from the saved copy or the first answer); later refreshes never overwrite typing.
@@ -53,7 +53,7 @@ export default function Hours() {
   const update = (i, patch) => setDays((d) => d.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   async function save() {
-    setFailure(null); setDone(null);
+    setFailure(null);
     const hours = [];
     for (let i = 0; i < 7; i += 1) {
       if (!days[i].open) continue;
@@ -73,7 +73,7 @@ export default function Hours() {
     setBusy(true);
     try {
       await call("/hours", { method: "PUT", body: { hours, orderCutoffMinutes: minutes } });
-      setDone(hours.length === 0 ? "Saved. Your store is closed all week." : "Hours saved.");
+      toast(hours.length === 0 ? "Saved. Your store is closed all week." : "Hours saved.");
       setExtraPeriods(false);
       forgetCached(`${storeId}|/store`); // store tab shows the new hours when you go back
       reload();
@@ -88,7 +88,6 @@ export default function Hours() {
     <Screen>
       <Body muted style={{ marginBottom: 12 }}>Philippine time, 24-hour clock (22:00 = 10 PM; 24:00 = midnight). Customers can browse while you are closed, but can't order.</Body>
       {extraPeriods ? <Notice kind="info">Some days have more than one opening period. Saving here keeps only the first period of each day.</Notice> : null}
-      <Notice kind="ok">{done}</Notice>
 
       {DAYS.map((day, i) => (
         <Card key={day}>

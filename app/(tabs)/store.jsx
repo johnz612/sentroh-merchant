@@ -5,6 +5,7 @@ import { Pressable, Switch, Text, View } from "react-native";
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached } from "@/lib/cache";
+import { toast } from "@/lib/toast";
 import { clock, money } from "@/lib/format";
 import { unregisterPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
@@ -57,6 +58,7 @@ export default function Store() {
       await call("/store", { method: "PATCH", body: { defaultProductKind: kind } });
       forgetCached(`${storeId}|/store`);
       await reload();
+      toast(kind === "COOKED_FOOD" ? "New products now start as cooked food." : "New products now start as packaged items.");
     } catch (err) {
       setFailure(err);
     } finally {

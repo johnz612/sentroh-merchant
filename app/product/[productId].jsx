@@ -12,6 +12,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { canAdjust, cropPhoto, fileBytes, loadStoredPhoto, makeOriginal, prepareProductPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
+import { toast } from "@/lib/toast";
 
 const EMPTY = {
   name: "", displayName: "", description: "", brand: "", price: "", stockQty: "", sellingType: "UNIT",
@@ -139,6 +140,7 @@ function Photos({ product, call, canEdit, onChange, askForPhoto }) {
       }
       onChange(json.product);
       setEditing(null);
+      toast(mode === "new" ? "Photo added." : "Photo saved.");
     } catch (err) {
       // The editor stays open so nothing is lost; the store can try again or cancel.
       Alert.alert("Photo not saved", err?.message || UPLOAD_FAILED);
@@ -304,7 +306,6 @@ export default function ProductScreen() {
   const [stockInput, setStockInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [done, setDone] = useState(null);
   const [newCategory, setNewCategory] = useState("");
   const [warning, setWarning] = useState(null);
 
@@ -377,15 +378,15 @@ export default function ProductScreen() {
   async function save() {
     const missing = missingRequired();
     if (missing.length) {
-      setDone(null);
       setError(new Error(`Fill in the required ${missing.length > 1 ? "fields" : "field"}: ${missing.join(", ")}.`));
       return;
     }
-    setBusy(true); setError(null); setDone(null); setWarning(null);
+    setBusy(true); setError(null); setWarning(null);
     try {
       if (creating) {
         const json = await call("/products", { method: "POST", body: body() });
         forgetCached(`${storeId}|/products?`);
+        toast(json.warning ? `Added. ${json.warning.message}` : "Product added.", json.warning ? "error" : "ok");
         // A new dish goes straight to its photo.
         router.replace({ pathname: `/product/${json.product.id}`, params: json.product.productKind === "COOKED_FOOD" ? { askForPhoto: "1" } : {} });
         return;
@@ -393,8 +394,12 @@ export default function ProductScreen() {
       const json = await call(`/products/${product.id}`, { method: "PATCH", body: body() });
       setProduct(json.product);
       edited.current = false;
-      setDone("Saved.");
-      if (json.warning) setWarning(json.warning.message);
+      if (json.warning) {
+        setWarning(json.warning.message);
+        toast(`Saved. ${json.warning.message}`, "error");
+      } else {
+        toast("Saved.");
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -403,17 +408,17 @@ export default function ProductScreen() {
   }
 
   async function saveStock() {
-    setError(null); setDone(null);
+    setError(null);
     try {
       const json = await call(`/products/${product.id}/stock`, { method: "POST", body: { stockQty: toNumber(stockInput) } });
       setProduct(json.product);
       setF((x) => ({ ...x, stockQty: toText(json.product.stockQty) }));
-      setDone("Stock updated.");
+      toast("Stock updated.");
     } catch (err) { setError(err); }
   }
 
   async function toggleOnSale(onSale) {
-    setF((x) => ({ ...x, onSale })); setError(null); setDone(null);
+    setF((x) => ({ ...x, onSale })); setError(null);
     try {
       await call("/products/on-sale", { method: "POST", body: { onSale, productIds: [product.id] } });
       const json = await call(`/products/${product.id}`);
@@ -425,12 +430,12 @@ export default function ProductScreen() {
   }
 
   async function soldOut(until) {
-    setError(null); setDone(null);
+    setError(null);
     try {
       await call("/products/sold-out", { method: "POST", body: { productIds: [product.id], until } });
       const json = await call(`/products/${product.id}`);
       setProduct(json.product);
-      setDone(until === "TODAY" ? "Marked sold out until midnight." : "Available again.");
+      toast(until === "TODAY" ? "Marked sold out until midnight." : "Available again.");
     } catch (err) { setError(err); }
   }
 
@@ -461,7 +466,6 @@ export default function ProductScreen() {
       {product && !product.shownToCustomers ? (
         <Notice kind="info">Customers can't see this product: {WHY_HIDDEN[product.hiddenReason] || "hidden"}.{product.hiddenBySentrohReason ? ` Sentroh: ${product.hiddenBySentrohReason}` : ""}</Notice>
       ) : null}
-      <Notice kind="ok">{done}</Notice>
       <Notice kind="info">{warning}</Notice>
       {product && product.missingForSale?.length ? (
         <Notice kind="info">Customers can't order this dish yet. Add {missingText(product.missingForSale)}, then switch it on.</Notice>

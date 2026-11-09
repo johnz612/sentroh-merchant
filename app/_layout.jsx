@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { Toast } from "@/components/Toast";
 import { Button, Loading, Notice, Screen, Title } from "@/components/ui";
 import { clearCache } from "@/lib/cache";
 import { registerForPush } from "@/lib/push";
@@ -108,6 +109,7 @@ export default function Layout() {
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <Root />
+        <Toast />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
