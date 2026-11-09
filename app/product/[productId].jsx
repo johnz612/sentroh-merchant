@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +8,7 @@ import { Body, Button, Card, Chip, Field, FieldTag, Label, Notice, s, Screen, Sk
 import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
 import { PhotoEditor } from "@/components/PhotoEditor";
+import { ProductImage } from "@/components/ProductImage";
 import { canAdjust, cropPhoto, fileBytes, loadStoredPhoto, makeOriginal, prepareProductPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
@@ -194,7 +194,7 @@ function Photos({ product, call, canEdit, onChange, askForPhoto }) {
               { text: "Cancel", style: "cancel" },
             ])}
             style={{ marginRight: 8 }}>
-            <Image source={{ uri: img.thumbnailUrl || img.url }} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} contentFit="cover" />
+            <ProductImage uri={img.thumbnailUrl || img.url} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} />
             {idx === 0 ? <Text style={[s.sub, { textAlign: "center" }]}>Main</Text> : null}
           </Pressable>
         ))}

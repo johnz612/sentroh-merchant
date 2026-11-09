@@ -9,11 +9,13 @@ import { Button } from "@/components/ui";
 import { turnedSize } from "@/lib/photos";
 import { C } from "@/lib/theme";
 
-const MAX_ZOOM = 6; // times the smallest zoom that still fills the square
+const MAX_ZOOM = 6; // times the zoom that just fills the square
 
 /**
  * Square photo editor: drag to move, pinch to zoom, "Rotate" turns the photo
- * a quarter turn. The square is what customers see.
+ * a quarter turn. The square is what customers see. Zooming out past "fills
+ * the square" shows the whole photo; the empty space is filled with a blurred
+ * copy of the photo (as the apps show it), and the photo stays centred that way.
  *
  * photo: { uri, width, height } (the uncropped photo when there is one)
  * crop:  last saved { rotate, x, y, size } in pixels of the turned photo, or null (start centred)
@@ -25,20 +27,27 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
   const [rotate, setRotate] = useState(crop?.rotate ?? 0);
 
   const turned = turnedSize(photo.width, photo.height, rotate);
-  const minScale = frame / Math.min(turned.width, turned.height);
+  // fillScale: the photo just fills the square. minScale: the whole photo fits in it.
+  const fillScale = frame / Math.min(turned.width, turned.height);
+  const minScale = frame / Math.max(turned.width, turned.height);
+
+  /**
+   * Keeps the photo where it can be: covering the square when it is bigger than it,
+   * centred when it is smaller (the apps show a smaller photo centred too).
+   */
+  function place(pos, length) {
+    "worklet";
+    return length >= frame ? Math.min(0, Math.max(frame - length, pos)) : (frame - length) / 2;
+  }
 
   /** Where the photo starts: at the saved square, or centred and just filling the square. */
   function startView() {
     const saved = crop && crop.rotate === rotate ? crop : null;
     if (saved) {
-      const sc = Math.min(Math.max(frame / saved.size, minScale), minScale * MAX_ZOOM);
-      return {
-        scale: sc,
-        x: Math.min(0, Math.max(frame - turned.width * sc, -saved.x * sc)),
-        y: Math.min(0, Math.max(frame - turned.height * sc, -saved.y * sc)),
-      };
+      const sc = Math.min(Math.max(frame / saved.size, minScale), fillScale * MAX_ZOOM);
+      return { scale: sc, x: place(-saved.x * sc, turned.width * sc), y: place(-saved.y * sc, turned.height * sc) };
     }
-    return { scale: minScale, x: (frame - turned.width * minScale) / 2, y: (frame - turned.height * minScale) / 2 };
+    return { scale: fillScale, x: (frame - turned.width * fillScale) / 2, y: (frame - turned.height * fillScale) / 2 };
   }
   const first = startView();
 
@@ -49,6 +58,7 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
   const tw = useSharedValue(turned.width);
   const th = useSharedValue(turned.height);
   const minS = useSharedValue(minScale);
+  const maxS = useSharedValue(fillScale * MAX_ZOOM);
 
   // After a quarter turn (or a new photo or screen size), start again from the start view.
   useEffect(() => {
@@ -56,6 +66,7 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
     tw.value = turned.width;
     th.value = turned.height;
     minS.value = minScale;
+    maxS.value = fillScale * MAX_ZOOM;
     scale.value = v.scale;
     tx.value = v.x;
     ty.value = v.y;
@@ -67,19 +78,19 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
     .averageTouches(true)
     .onChange((e) => {
       const sc = scale.value;
-      tx.value = Math.min(0, Math.max(frame - tw.value * sc, tx.value + e.changeX));
-      ty.value = Math.min(0, Math.max(frame - th.value * sc, ty.value + e.changeY));
+      tx.value = place(tx.value + e.changeX, tw.value * sc);
+      ty.value = place(ty.value + e.changeY, th.value * sc);
     });
 
   const pinch = Gesture.Pinch()
     .onChange((e) => {
       const s0 = scale.value;
-      const sc = Math.min(Math.max(s0 * e.scaleChange, minS.value), minS.value * MAX_ZOOM);
+      const sc = Math.min(Math.max(s0 * e.scaleChange, minS.value), maxS.value);
       const k = sc / s0;
       // Keep the point between the fingers in place.
       scale.value = sc;
-      tx.value = Math.min(0, Math.max(frame - tw.value * sc, e.focalX - (e.focalX - tx.value) * k));
-      ty.value = Math.min(0, Math.max(frame - th.value * sc, e.focalY - (e.focalY - ty.value) * k));
+      tx.value = place(e.focalX - (e.focalX - tx.value) * k, tw.value * sc);
+      ty.value = place(e.focalY - (e.focalY - ty.value) * k, th.value * sc);
     });
 
   const gesture = Gesture.Simultaneous(pan, pinch);
@@ -116,13 +127,21 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
         <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
           <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
             <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>{title}</Text>
-            <Text style={{ color: "#C9D2DE", marginTop: 4 }}>Drag to move, pinch to zoom. The square is what customers see.</Text>
+            <Text style={{ color: "#C9D2DE", marginTop: 4 }}>
+              Drag to move, pinch to zoom. The square is what customers see. Zoom out to show the whole photo; the space around it is filled with a soft blur.
+            </Text>
           </View>
 
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <GestureDetector gesture={gesture}>
               <View style={{ width: frame, height: frame, overflow: "hidden", backgroundColor: "#000", borderWidth: 2, borderColor: "#fff" }}
                 accessibilityLabel="Photo crop area" accessibilityHint="Drag to move the photo, pinch to zoom">
+                {/* What customers see around a photo that doesn't fill the square. */}
+                <View pointerEvents="none" style={{ position: "absolute", width: photo.width * fillScale, height: photo.height * fillScale,
+                  left: (frame - photo.width * fillScale) / 2, top: (frame - photo.height * fillScale) / 2, transform: [{ rotate: `${rotate}deg` }] }}>
+                  <Image source={{ uri: photo.uri }} style={{ width: "100%", height: "100%" }} contentFit="fill" blurRadius={18} />
+                </View>
+                <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.18)" }} />
                 <Animated.View style={boxStyle}>
                   <Animated.View style={imageStyle}>
                     <Image source={{ uri: photo.uri }} style={{ width: "100%", height: "100%" }} contentFit="fill" />
