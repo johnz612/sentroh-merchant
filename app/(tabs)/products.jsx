@@ -27,6 +27,11 @@ const ProductRow = memo(function ProductRow({ p, onToggle, onOpen, onPrefetch, t
             {money(p.price)}, {p.trackStock ? `${p.stockQty}${p.stockUnit === "KG" ? " kg" : ""} in stock` : "stock not counted"}{p.managedByPos ? ", from POS" : ""}
           </Text>
           {!p.shownToCustomers && p.onSale ? <Text style={[s.sub, { color: p.hiddenReason === "HIDDEN_BY_SENTROH" ? C.red : C.mangoInk }]}>Customers can't see it: {WHY_HIDDEN[p.hiddenReason] || "hidden"}</Text> : null}
+          {p.missingForSale?.length ? (
+            <Text style={[s.sub, { color: C.mangoInk }]}>
+              Needs {p.missingForSale.map((m) => (m === "PHOTO" ? "a photo" : "a menu section")).join(" and ")} before it can be on sale
+            </Text>
+          ) : null}
           {p.hiddenReason === "HIDDEN_BY_SENTROH" && p.hiddenBySentrohReason ? <Text style={[s.sub, { color: C.red }]}>{p.hiddenBySentrohReason}</Text> : null}
         </View>
         <Switch value={p.onSale} onValueChange={(v) => onToggle(p, v)} disabled={toggling}

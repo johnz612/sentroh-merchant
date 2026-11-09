@@ -4,6 +4,7 @@ import { Pressable, Switch, Text, View } from "react-native";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
+import { forgetCached } from "@/lib/cache";
 import { clock, money } from "@/lib/format";
 import { unregisterPush } from "@/lib/push";
 import { useSession } from "@/lib/session";
@@ -41,6 +42,20 @@ export default function Store() {
     setBusy(key); setFailure(null);
     try {
       await call(`/branches/${branch.id}/settings`, { method: "PATCH", body });
+      await reload();
+    } catch (err) {
+      setFailure(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** What new products start as: COOKED_FOOD or GOODS. */
+  async function setDefaultKind(kind) {
+    setBusy(`KIND${kind}`); setFailure(null);
+    try {
+      await call("/store", { method: "PATCH", body: { defaultProductKind: kind } });
+      forgetCached(`${storeId}|/store`);
       await reload();
     } catch (err) {
       setFailure(err);
@@ -94,10 +109,10 @@ export default function Store() {
             onValueChange={(v) => settings({ acceptOrdersAutomatically: v }, "AUTO")}
             trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
         </View>
-        {merchant.merchantType === "FOOD_RESTAURANT" && branch ? (
+        {(merchant.defaultProductKind === "COOKED_FOOD" || merchant.merchantType === "FOOD_RESTAURANT") && branch ? (
           <View style={{ marginTop: 12 }}>
             <Text style={[s.body, { fontWeight: "600" }]}>Usual preparing time: {branch.prepMinutes ?? 20} min</Text>
-            <Text style={s.sub}>Customers see this as an estimate.</Text>
+            <Text style={s.sub}>For cooked food. Customers see it as an estimate; a dish can have its own time.</Text>
             <View style={[s.row, { flexWrap: "wrap", marginTop: 6 }]}>
               {[10, 15, 20, 30, 45, 60].map((m) => (
                 <View key={m} style={{ marginBottom: 6 }}>
@@ -111,6 +126,20 @@ export default function Store() {
         {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change these.</Text> : null}
       </Card>
       <Notice error={failure} />
+
+      <Card>
+        <Label>New products start as</Label>
+        <Text style={[s.sub, { marginBottom: 6 }]}>
+          You can still choose for each product. Cooked food is delivered by Express only and needs a photo and a menu section before it can be on sale.
+        </Text>
+        <View style={s.row}>
+          {[["COOKED_FOOD", "Cooked food"], ["GOODS", "Packaged item"]].map(([kind, label]) => (
+            <Chip key={kind} label={busy === `KIND${kind}` ? "Saving…" : label} active={merchant.defaultProductKind === kind}
+              onPress={() => canEdit && merchant.defaultProductKind !== kind && setDefaultKind(kind)} />
+          ))}
+        </View>
+        {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change this.</Text> : null}
+      </Card>
 
       <Pressable onPress={() => router.push("/hours")} accessibilityRole="button">
         <Card>

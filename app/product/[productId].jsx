@@ -16,7 +16,17 @@ import { C } from "@/lib/theme";
 const EMPTY = {
   name: "", displayName: "", description: "", brand: "", price: "", stockQty: "", sellingType: "UNIT",
   unitName: "", merchantSku: "", maxDeliveryQty: "", prepTimeMinutes: "", categoryId: null, onSale: false, trackStock: true,
+  productKind: null,
 };
+
+/** COOKED_FOOD: made to order (Express delivery only, needs a photo and a menu section to be on sale). GOODS: packaged or ready item. */
+const KINDS = [
+  { kind: "COOKED_FOOD", label: "Cooked food", hint: "Made when ordered, like rice meals, burgers, lugaw. Delivered by Express only." },
+  { kind: "GOODS", label: "Packaged item", hint: "Ready on the shelf, like drinks, snacks, groceries. Stock can be counted." },
+];
+
+const MISSING_WORDS = { PHOTO: "a photo", MENU_SECTION: "a menu section" };
+const missingText = (missing) => missing.map((m) => MISSING_WORDS[m] || m).join(" and ");
 
 const toText = (v) => (v == null ? "" : String(v));
 const toNumber = (v) => (v === "" || v == null ? null : Number(String(v).replace(/,/g, "")));
@@ -26,7 +36,7 @@ const POS_FIELDS = ["displayName", "description", "categoryId", "maxDeliveryQty"
 
 const UPLOAD_FAILED = "The photo did not upload. Check your connection and try again.";
 
-function Photos({ product, call, canEdit, onChange }) {
+function Photos({ product, call, canEdit, onChange, askForPhoto }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Open editor: { mode: "new" | "adjust", photo: { uri, ref?, width, height }, crop, image? }
@@ -136,6 +146,19 @@ function Photos({ product, call, canEdit, onChange }) {
       setBusy(false);
     }
   }
+
+  // Right after a dish is added: offer to add its photo now.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!askForPhoto || asked.current || !canEdit || images.length > 0) return;
+    asked.current = true;
+    Alert.alert("Add a photo of this dish", "Customers can order it once it has a photo and a menu section.", [
+      { text: "Later", style: "cancel" },
+      { text: "Choose photo", onPress: () => add(false) },
+      { text: "Take photo", onPress: () => add(true) },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askForPhoto, canEdit, images.length]);
 
   async function makeMain(image) {
     const order = [image.id, ...images.filter((i) => i.id !== image.id).map((i) => i.id)];
@@ -256,13 +279,17 @@ function Choices({ product, call, canEdit, onChange }) {
 }
 
 export default function ProductScreen() {
-  const { productId } = useLocalSearchParams();
+  const { productId, askForPhoto } = useLocalSearchParams();
   const creating = productId === "new";
   const router = useRouter();
   const { storeId, store, call, canEdit, keyFor } = useStore();
   const productKey = creating ? undefined : keyFor(`/products/${productId}`);
   const loaded = useLoader(() => (creating ? Promise.resolve({ product: null }) : call(`/products/${productId}`)), [storeId, productId], { key: productKey });
   const cats = useLoader(() => call("/categories"), [storeId], { key: keyFor("/categories") });
+  // Store summary: the default kind for new products and the usual preparing time.
+  const summary = useLoader(() => call("/store"), [storeId], { key: keyFor("/store") });
+  const defaultKind = summary.data?.merchant?.defaultProductKind || (store?.merchantType === "FOOD_RESTAURANT" ? "COOKED_FOOD" : "GOODS");
+  const storePrep = summary.data?.branch?.prepMinutes ?? 20;
   const [product, setProductState] = useState(null);
   // Typing is never overwritten by a background refresh.
   const edited = useRef(false);
@@ -273,13 +300,17 @@ export default function ProductScreen() {
     updateCached(productKey, (d) => ({ ...d, product: { ...d.product, ...p, images: p.images ?? d.product?.images, optionGroups: p.optionGroups ?? d.product?.optionGroups } }));
     forgetCached(`${storeId}|/products?`);
   }
-  // Restaurants usually don't count dishes (like foodpanda and Grab); stores count stock.
-  const [f, setF] = useState({ ...EMPTY, trackStock: store?.merchantType !== "FOOD_RESTAURANT" });
+  const [f, setF] = useState({ ...EMPTY });
   const [stockInput, setStockInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(null);
   const [newCategory, setNewCategory] = useState("");
+  const [warning, setWarning] = useState(null);
+
+  // A new product starts as the store's default kind (until the person picks one).
+  const kind = f.productKind || (creating ? defaultKind : product?.productKind) || "GOODS";
+  const cooked = kind === "COOKED_FOOD";
 
   useEffect(() => {
     const p = loaded.data?.product;
@@ -290,7 +321,7 @@ export default function ProductScreen() {
       name: p.name, displayName: toText(p.displayName), description: toText(p.description), brand: toText(p.brand),
       price: toText(p.price), stockQty: toText(p.stockQty), sellingType: p.sellingType || "UNIT", unitName: toText(p.unitName),
       merchantSku: toText(p.merchantSku), maxDeliveryQty: toText(p.maxDeliveryQty), prepTimeMinutes: toText(p.prepTimeMinutes || ""),
-      categoryId: p.categoryId, onSale: p.onSale, trackStock: p.trackStock !== false,
+      categoryId: p.categoryId, onSale: p.onSale, trackStock: p.trackStock !== false, productKind: p.productKind || null,
     });
     setStockInput(toText(p.stockQty));
   }, [loaded.data]);
@@ -300,12 +331,28 @@ export default function ProductScreen() {
   const pos = product?.managedByPos === true;
   const set = (key) => (v) => { edited.current = true; setF({ ...f, [key]: v }); };
 
+  /** Switches the form between cooked food and packaged item. */
+  function chooseKind(next) {
+    if (!canEdit || next === kind) return;
+    edited.current = true;
+    setF((x) => ({
+      ...x,
+      productKind: next,
+      // Dishes are not counted and are sold by the piece; their preparing time starts at the store's usual time.
+      ...(next === "COOKED_FOOD"
+        ? { trackStock: false, sellingType: "UNIT", prepTimeMinutes: x.prepTimeMinutes || String(storePrep) }
+        : { trackStock: true }),
+    }));
+  }
+
   function body() {
     const all = {
       name: f.name.trim(), displayName: f.displayName.trim() || null, description: f.description.trim() || null, brand: f.brand.trim() || null,
       price: toNumber(f.price), stockQty: toNumber(f.stockQty), sellingType: f.sellingType, unitName: f.unitName.trim() || null,
       merchantSku: f.merchantSku.trim() || null, maxDeliveryQty: toNumber(f.maxDeliveryQty), prepTimeMinutes: toNumber(f.prepTimeMinutes),
-      categoryId: f.categoryId, onSale: f.onSale, trackStock: f.trackStock,
+      categoryId: f.categoryId, onSale: f.onSale, trackStock: cooked ? false : f.trackStock,
+      productKind: kind,
+      ...(cooked ? { sellingType: "UNIT", prepTimeMinutes: toNumber(f.prepTimeMinutes) ?? storePrep } : {}),
     };
     if (creating) {
       Object.keys(all).forEach((k) => (all[k] === null || all[k] === "") && delete all[k]);
@@ -322,6 +369,8 @@ export default function ProductScreen() {
     const missing = [];
     if (!f.name.trim()) missing.push("Name");
     if (toNumber(f.price) == null || !(toNumber(f.price) > 0)) missing.push("Price");
+    if (cooked && !f.categoryId) missing.push("Menu section");
+    if (cooked && f.prepTimeMinutes !== "" && !(toNumber(f.prepTimeMinutes) >= 0)) missing.push("Preparation time");
     return missing;
   }
 
@@ -329,21 +378,23 @@ export default function ProductScreen() {
     const missing = missingRequired();
     if (missing.length) {
       setDone(null);
-      setError(new Error(`Fill in the required ${missing.length > 1 ? "fields" : "field"}: ${missing.join(" and ")}.`));
+      setError(new Error(`Fill in the required ${missing.length > 1 ? "fields" : "field"}: ${missing.join(", ")}.`));
       return;
     }
-    setBusy(true); setError(null); setDone(null);
+    setBusy(true); setError(null); setDone(null); setWarning(null);
     try {
       if (creating) {
         const json = await call("/products", { method: "POST", body: body() });
         forgetCached(`${storeId}|/products?`);
-        router.replace(`/product/${json.product.id}`);
+        // A new dish goes straight to its photo.
+        router.replace({ pathname: `/product/${json.product.id}`, params: json.product.productKind === "COOKED_FOOD" ? { askForPhoto: "1" } : {} });
         return;
       }
       const json = await call(`/products/${product.id}`, { method: "PATCH", body: body() });
       setProduct(json.product);
       edited.current = false;
       setDone("Saved.");
+      if (json.warning) setWarning(json.warning.message);
     } catch (err) {
       setError(err);
     } finally {
@@ -411,12 +462,26 @@ export default function ProductScreen() {
         <Notice kind="info">Customers can't see this product: {WHY_HIDDEN[product.hiddenReason] || "hidden"}.{product.hiddenBySentrohReason ? ` Sentroh: ${product.hiddenBySentrohReason}` : ""}</Notice>
       ) : null}
       <Notice kind="ok">{done}</Notice>
+      <Notice kind="info">{warning}</Notice>
+      {product && product.missingForSale?.length ? (
+        <Notice kind="info">Customers can't order this dish yet. Add {missingText(product.missingForSale)}, then switch it on.</Notice>
+      ) : null}
+
+      {!pos ? (
+        <Card>
+          <Text style={s.label}>What is this?<FieldTag required /></Text>
+          <Text style={[s.sub, { marginBottom: 6 }]}>{KINDS.find((k) => k.kind === kind)?.hint}</Text>
+          <View style={s.row}>
+            {KINDS.map((k) => <Chip key={k.kind} label={k.label} active={kind === k.kind} onPress={() => chooseKind(k.kind)} />)}
+          </View>
+        </Card>
+      ) : null}
 
       <Card>
         <View style={[s.row, { justifyContent: "space-between" }]}>
           <View style={{ flex: 1 }}>
             <Label>On sale</Label>
-            <Text style={s.sub}>Off means customers can't order it.</Text>
+            <Text style={s.sub}>{cooked ? "Off means customers can't order it. A dish needs a photo and a menu section first." : "Off means customers can't order it."}</Text>
           </View>
           <Switch value={f.onSale} onValueChange={creating ? set("onSale") : toggleOnSale} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
         </View>
@@ -436,7 +501,8 @@ export default function ProductScreen() {
         </Card>
       ) : null}
 
-      {!creating ? <Photos product={product} call={call} canEdit={canEdit} onChange={setProduct} /> : null}
+      {!creating ? <Photos product={product} call={call} canEdit={canEdit} onChange={setProduct} askForPhoto={askForPhoto === "1"} /> : null}
+      {creating && cooked ? <Notice kind="info">You add the dish's photo right after you save it.</Notice> : null}
 
       {!creating && !pos && product.sellingType === "UNIT" ? <Choices product={product} call={call} canEdit={canEdit} onChange={setProduct} /> : null}
 
@@ -451,15 +517,22 @@ export default function ProductScreen() {
           </>
         ) : (
           <>
-            <Field label="Name" required hint="What customers see, e.g. Chicken Burger or Coke 1.5 L." placeholder="e.g. Chicken Burger" value={f.name} onChangeText={set("name")} editable={canEdit} />
+            <Field label="Name" required hint={cooked ? "What customers see, e.g. Chicken Adobo with Rice." : "What customers see, e.g. Coke 1.5 L or Lucky Me Pancit Canton."}
+              placeholder={cooked ? "e.g. Chicken Adobo with Rice" : "e.g. Coke 1.5 L"} value={f.name} onChangeText={set("name")} editable={canEdit} />
+            {!cooked ? (
+              <>
             <Text style={s.label}>Sold<FieldTag required /></Text>
             <Text style={[s.sub, { marginBottom: 4 }]}>Per piece: customers order whole items. By weight: customers order kilos, like rice or meat.</Text>
             <View style={[s.row, { marginBottom: 12 }]}>
               <Chip label="Per piece" active={f.sellingType === "UNIT"} onPress={() => canEdit && set("sellingType")("UNIT")} />
               <Chip label="By weight (kg)" active={f.sellingType === "WEIGHT"} onPress={() => canEdit && set("sellingType")("WEIGHT")} />
             </View>
+              </>
+            ) : null}
             <Field label={f.sellingType === "WEIGHT" ? "Price per kg (₱)" : "Price (₱)"} required
               hint={f.sellingType === "WEIGHT" ? "What the customer pays for 1 kg." : "What the customer pays for one piece."} keyboardType="decimal-pad" value={f.price} onChangeText={set("price")} editable={canEdit} />
+            {!cooked ? (
+              <>
             <View style={[s.row, { justifyContent: "space-between", marginBottom: 12 }]}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={[s.body, { fontWeight: "600" }]}>Count stock</Text>
@@ -471,11 +544,13 @@ export default function ProductScreen() {
               <Field label={f.sellingType === "WEIGHT" ? "Stock (kg)" : "Stock"} optional hint="How many you have now. Empty means 0, and customers can't order it until you add stock." keyboardType="decimal-pad" value={f.stockQty} onChangeText={set("stockQty")} />
             ) : null}
             <Field label="Brand" optional hint="e.g. Nestlé, Lucky Me. Customers can search by brand." value={f.brand} onChangeText={set("brand")} editable={canEdit} />
-            <Field label="Unit or size" optional hint="Shown next to the price, e.g. 1 L bottle, 500 g pack, small plate." value={f.unitName} onChangeText={set("unitName")} editable={canEdit} />
-            <Field label="Your code (SKU)" optional hint="Your own product code for your records. Customers don't see it." value={f.merchantSku} onChangeText={set("merchantSku")} editable={canEdit} />
+              </>
+            ) : null}
+            <Field label="Unit or size" optional hint={cooked ? "Shown next to the price, e.g. good for 1, small, 12 inch." : "Shown next to the price, e.g. 1 L bottle, 500 g pack."} value={f.unitName} onChangeText={set("unitName")} editable={canEdit} />
+            {!cooked ? <Field label="Your code (SKU)" optional hint="Your own product code for your records. Customers don't see it." value={f.merchantSku} onChangeText={set("merchantSku")} editable={canEdit} /> : null}
           </>
         )}
-        <Field label="Description" optional hint="What's in it, flavor, size or how it's served. Shown on the product page." value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
+        <Field label="Description" optional hint={cooked ? "Recommended: what's in it and how big it is, e.g. good for 1, with rice and egg." : "What's in it, flavor or size. Shown on the product page."} value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
       </Card>
 
       {!creating && !pos && product.trackStock ? (
@@ -492,8 +567,10 @@ export default function ProductScreen() {
       ) : null}
 
       <Card>
-        <Text style={s.label}>Category<FieldTag /></Text>
-        <Text style={[s.sub, { marginBottom: 8 }]}>Groups your products into sections customers browse, like Burgers or Drinks. Tap one to choose it.</Text>
+        <Text style={s.label}>{cooked ? "Menu section" : "Category"}<FieldTag required={cooked} /></Text>
+        <Text style={[s.sub, { marginBottom: 8 }]}>{cooked
+          ? "The part of your menu this dish is in, like Rice Meals or Burgers. Tap one to choose it."
+          : "Groups your products into sections customers browse, like Snacks or Drinks. Tap one to choose it."}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
           <View style={{ marginBottom: 8 }}><Chip label="None" active={!f.categoryId} onPress={() => canEdit && set("categoryId")(null)} /></View>
           {storeCategories.map((c) => (
@@ -503,15 +580,19 @@ export default function ProductScreen() {
         {pos && product.posCategoryName ? <Text style={[s.sub, { marginBottom: 8 }]}>POS category: {product.posCategoryName}. Customers see this unless you pick one above.</Text> : null}
         {canEdit ? (
           <View style={s.row}>
-            <View style={{ flex: 1, marginRight: 8 }}><Field label="New category" hint="Type a name, tap Add, then tap it above." value={newCategory} onChangeText={setNewCategory} placeholder="e.g. Rice meals" /></View>
+            <View style={{ flex: 1, marginRight: 8 }}><Field label={cooked ? "New menu section" : "New category"} hint="Type a name and tap Add. It is chosen for this product." value={newCategory} onChangeText={setNewCategory} placeholder="e.g. Rice meals" /></View>
             <Button title="Add" kind="secondary" onPress={addCategory} style={{ marginTop: 8 }} />
           </View>
         ) : null}
       </Card>
 
       <Card>
-        <Field label="Most per delivery order" optional hint="The most a customer can get in one delivery, e.g. 2 for a 25 kg rice sack. Empty means no limit." keyboardType="number-pad" value={f.maxDeliveryQty} onChangeText={set("maxDeliveryQty")} editable={canEdit} />
-        <Field label="Preparation time (minutes)" optional hint="Mostly for food: minutes you need to make it after you accept the order. It is added to the customer's waiting time. Empty for ready-made items." keyboardType="number-pad" value={f.prepTimeMinutes} onChangeText={set("prepTimeMinutes")} editable={canEdit} />
+        {!cooked ? <Field label="Most per delivery order" optional hint="The most a customer can get in one delivery, e.g. 2 for a 25 kg rice sack. Empty means no limit." keyboardType="number-pad" value={f.maxDeliveryQty} onChangeText={set("maxDeliveryQty")} editable={canEdit} /> : null}
+        <Field label="Preparation time (minutes)" required={cooked} optional={!cooked}
+          hint={cooked
+            ? `Minutes you need to make it after you accept the order. Added to the customer's waiting time. Empty uses your usual ${storePrep} min.`
+            : "Only if you prepare it after the order, e.g. cutting or packing. Empty for ready items."}
+          placeholder={cooked ? String(storePrep) : undefined} keyboardType="number-pad" value={f.prepTimeMinutes} onChangeText={set("prepTimeMinutes")} editable={canEdit} />
       </Card>
 
       <Notice error={error} />
