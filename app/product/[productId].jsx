@@ -8,7 +8,8 @@ import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Field, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
 import { forgetCached, updateCached } from "@/lib/cache";
 import { money, WHY_HIDDEN } from "@/lib/format";
-import { fileBytes, prepareProductPhoto } from "@/lib/photos";
+import { PhotoEditor } from "@/components/PhotoEditor";
+import { canAdjust, cropPhoto, fileBytes, loadStoredPhoto, makeOriginal, prepareProductPhoto } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
 
@@ -23,40 +24,114 @@ const toNumber = (v) => (v === "" || v == null ? null : Number(String(v).replace
 /** Fields a POS product may change; everything else comes from Hatid POS. */
 const POS_FIELDS = ["displayName", "description", "categoryId", "maxDeliveryQty", "prepTimeMinutes"];
 
+const UPLOAD_FAILED = "The photo did not upload. Check your connection and try again.";
+
 function Photos({ product, call, canEdit, onChange }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Open editor: { mode: "new" | "adjust", photo: { uri, ref?, width, height }, crop, image? }
+  const [editing, setEditing] = useState(null);
   const images = product.images || [];
+  const bucket = () => supabase.storage.from("product-images");
+  const upload = async (link, uri) => (link ? bucket().uploadToSignedUrl(link.path, link.token, await fileBytes(uri), { contentType: "image/jpeg" }) : { error: true });
 
   async function add(fromCamera) {
     setError(null);
     const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return setError(new Error(fromCamera ? "Allow the camera to take a photo." : "Allow photo access to pick a photo."));
 
-    const options = { mediaTypes: ["images"], quality: 1, allowsEditing: true, aspect: [1, 1] };
+    // With the photo editor, the whole photo is picked and cropped in Sentroh's own editor (and kept for "Adjust").
+    const editor = canAdjust();
+    const options = { mediaTypes: ["images"], quality: 1, ...(editor ? {} : { allowsEditing: true, aspect: [1, 1] }) };
     const picked = fromCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
     if (picked.canceled || !picked.assets?.[0]) return;
 
     const asset = picked.assets[0];
+
+    if (editor) {
+      setBusy(true);
+      try {
+        const original = await makeOriginal(asset);
+        setEditing({ mode: "new", photo: original, crop: null });
+      } catch (err) {
+        setError(err);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
 
     setBusy(true);
     try {
       // Shrunk on the phone first: a ≤1280 px photo and a 320 px copy for lists (both JPEG).
       // An app installed before the shrinking module uploads the photo as picked, without a thumbnail.
       const { photo, thumb, contentType } = await prepareProductPhoto(asset);
-      const { upload, thumbUpload } = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType } });
-      const bucket = supabase.storage.from("product-images");
+      const { upload: link, thumbUpload } = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType } });
       const [up, upThumb] = await Promise.all([
-        bucket.uploadToSignedUrl(upload.path, upload.token, await fileBytes(photo.uri), { contentType }),
-        thumbUpload && thumb ? bucket.uploadToSignedUrl(thumbUpload.path, thumbUpload.token, await fileBytes(thumb.uri), { contentType: "image/jpeg" }) : { error: true },
+        bucket().uploadToSignedUrl(link.path, link.token, await fileBytes(photo.uri), { contentType }),
+        thumb ? upload(thumbUpload, thumb.uri) : { error: true },
       ]);
-      if (up.error) throw new Error("The photo did not upload. Check your connection and try again.");
+      if (up.error) throw new Error(UPLOAD_FAILED);
       // A failed small copy is not fatal: lists then use the full photo.
-      const body = { path: upload.path, ...(thumbUpload && !upThumb.error ? { thumbPath: thumbUpload.path } : {}) };
+      const body = { path: link.path, ...(thumbUpload && !upThumb.error ? { thumbPath: thumbUpload.path } : {}) };
       const json = await call(`/products/${product.id}/images`, { method: "POST", body });
       onChange(json.product);
     } catch (err) {
       setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Opens a saved photo in the editor: its uncropped original when there is one, else the photo itself. */
+  async function adjust(image) {
+    setError(null);
+    setBusy(true);
+    try {
+      const photo = await loadStoredPhoto(image.originalUrl || image.url);
+      setEditing({ mode: "adjust", photo, crop: image.originalUrl ? image.crop : null, image });
+    } catch {
+      setError(new Error("Could not open the photo. Check your connection and try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Saves the square chosen in the editor: a new photo, or the adjusted version of a saved one. */
+  async function saveEdit(chosen) {
+    const { mode, photo: source, image } = editing;
+    setBusy(true);
+    try {
+      const { photo, thumb, crop } = await cropPhoto(source, chosen);
+      let json;
+      if (mode === "new") {
+        const links = await call(`/products/${product.id}/images/upload-url`, { method: "POST", body: { contentType: "image/jpeg", withOriginal: true } });
+        const [up, upThumb, upOriginal] = await Promise.all([
+          upload(links.upload, photo.uri), upload(links.thumbUpload, thumb.uri), upload(links.originalUpload, source.uri),
+        ]);
+        if (up.error) throw new Error(UPLOAD_FAILED);
+        // Missing small copy or original are not fatal: lists use the photo, and "Adjust" works on the photo.
+        const kept = links.originalUpload && !upOriginal.error;
+        json = await call(`/products/${product.id}/images`, { method: "POST", body: {
+          path: links.upload.path,
+          ...(links.thumbUpload && !upThumb.error ? { thumbPath: links.thumbUpload.path } : {}),
+          ...(kept ? { originalPath: links.originalUpload.path, crop } : {}),
+        } });
+      } else {
+        const links = await call(`/images/${image.id}/upload-url`, { method: "POST", body: { contentType: "image/jpeg" } });
+        const [up, upThumb] = await Promise.all([upload(links.upload, photo.uri), upload(links.thumbUpload, thumb.uri)]);
+        if (up.error) throw new Error(UPLOAD_FAILED);
+        json = await call(`/images/${image.id}`, { method: "PUT", body: {
+          path: links.upload.path,
+          ...(links.thumbUpload && !upThumb.error ? { thumbPath: links.thumbUpload.path } : {}),
+          ...(image.originalUrl ? { crop } : {}),
+        } });
+      }
+      onChange(json.product);
+      setEditing(null);
+    } catch (err) {
+      // The editor stays open so nothing is lost; the store can try again or cancel.
+      Alert.alert("Photo not saved", err?.message || UPLOAD_FAILED);
     } finally {
       setBusy(false);
     }
@@ -90,6 +165,7 @@ function Photos({ product, call, canEdit, onChange }) {
         {images.map((img, idx) => (
           <Pressable key={img.id} disabled={!canEdit}
             onPress={() => Alert.alert("Photo", "", [
+              ...(canAdjust() ? [{ text: "Adjust (move, zoom, rotate)", onPress: () => adjust(img) }] : []),
               ...(idx > 0 ? [{ text: "Make main photo", onPress: () => makeMain(img) }] : []),
               { text: "Remove", style: "destructive", onPress: () => remove(img) },
               { text: "Cancel", style: "cancel" },
@@ -101,6 +177,11 @@ function Photos({ product, call, canEdit, onChange }) {
         ))}
       </ScrollView>
       <Notice error={error} />
+      {editing ? (
+        <PhotoEditor photo={editing.photo} crop={editing.crop} busy={busy}
+          title={editing.mode === "new" ? "Fit the photo" : "Adjust photo"}
+          onCancel={() => setEditing(null)} onDone={saveEdit} />
+      ) : null}
       {canEdit && images.length < 5 ? (
         <View style={[s.row, { marginTop: 8 }]}>
           <Button title="Take photo" kind="secondary" style={{ flex: 1, marginRight: 8 }} busy={busy} onPress={() => add(true)} />
