@@ -142,10 +142,31 @@ function Photos({ product, call, canEdit, onChange, askForPhoto }) {
       setEditing(null);
       toast(mode === "new" ? "Photo added." : "Photo saved.");
     } catch (err) {
+      // On a slow connection the answer can be lost after the photo was saved.
+      // Check before saying it failed.
+      if (err?.code === "NETWORK" && (await photoWasSaved(mode, image))) return;
       // The editor stays open so nothing is lost; the store can try again or cancel.
       Alert.alert("Photo not saved", err?.message || UPLOAD_FAILED);
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** After a lost answer: reloads the product and reports whether the new or adjusted photo is there. */
+  async function photoWasSaved(mode, image) {
+    try {
+      const json = await call(`/products/${product.id}`);
+      const now = json.product?.images || [];
+      const saved = mode === "new"
+        ? now.length > images.length
+        : now.some((i) => i.id === image.id && i.url !== image.url);
+      if (!saved) return false;
+      onChange(json.product);
+      setEditing(null);
+      toast(mode === "new" ? "Photo added." : "Photo saved.");
+      return true;
+    } catch {
+      return false;
     }
   }
 
