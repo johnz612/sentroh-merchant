@@ -26,7 +26,11 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
   const frame = Math.min(screenW - 32, 480);
   const [rotate, setRotate] = useState(crop?.rotate ?? 0);
 
-  const turned = turnedSize(photo.width, photo.height, rotate);
+  // Plain numbers for the gesture code: it runs on another thread and cannot take
+  // `photo` itself (a saved photo carries a loaded image that cannot be copied there).
+  const photoW = photo.width;
+  const photoH = photo.height;
+  const turned = turnedSize(photoW, photoH, rotate);
   // fillScale: the photo just fills the square. minScale: the whole photo fits in it.
   const fillScale = frame / Math.min(turned.width, turned.height);
   const minScale = frame / Math.max(turned.width, turned.height);
@@ -104,8 +108,8 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
     height: th.value * scale.value,
   }));
   const imageStyle = useAnimatedStyle(() => {
-    const w = photo.width * scale.value;
-    const h = photo.height * scale.value;
+    const w = photoW * scale.value;
+    const h = photoH * scale.value;
     return {
       position: "absolute",
       width: w,
@@ -114,7 +118,7 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
       top: (th.value * scale.value - h) / 2,
       transform: [{ rotate: `${rotate}deg` }],
     };
-  }, [rotate, photo.width, photo.height]);
+  }, [rotate, photoW, photoH]);
 
   function finish() {
     const s = scale.value;
