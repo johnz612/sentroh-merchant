@@ -23,7 +23,7 @@ function useGate() {
   useEffect(() => {
     const top = segments[0];
     if (status === "signed-out" && top !== "sign-in") router.replace("/sign-in");
-    else if (status === "no-store" && top !== "register") router.replace("/register");
+    else if (status === "no-store" && top !== "register" && top !== "pin-map") router.replace("/register");
     else if (status === "ready" && (top === "sign-in" || top === "register")) router.replace("/");
   }, [status, segments, router]);
 }
@@ -95,6 +95,7 @@ function Root() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ title: "Register your store" }} />
+      <Stack.Screen name="pin-map" options={{ headerShown: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="order/[orderId]" options={{ title: "Order" }} />
       <Stack.Screen name="product/[productId]" options={{ title: "Product" }} />
       <Stack.Screen name="hours" options={{ title: "Store hours" }} />
