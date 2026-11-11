@@ -217,14 +217,14 @@ function Photos({ product, call, canEdit, onChange, askForPhoto }) {
               { text: "Cancel", style: "cancel" },
             ])}
             style={{ marginRight: 8 }}>
-            <ProductImage uri={img.thumbnailUrl || img.url} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} />
+            <ProductImage uri={img.thumbnailUrl || img.url} fill={product.productKind === "COOKED_FOOD"} style={{ width: 84, height: 84, borderRadius: 8, borderWidth: idx === 0 ? 2 : 0, borderColor: C.teal }} />
             {idx === 0 ? <Text style={[s.sub, { textAlign: "center" }]}>Main</Text> : null}
           </Pressable>
         ))}
       </ScrollView>
       <Notice error={error} />
       {editing ? (
-        <PhotoEditor photo={editing.photo} crop={editing.crop} busy={busy}
+        <PhotoEditor photo={editing.photo} crop={editing.crop} busy={busy} fill={product.productKind === "COOKED_FOOD"}
           title={editing.mode === "new" ? "Fit the photo" : "Adjust photo"}
           onCancel={() => setEditing(null)} onDone={saveEdit} />
       ) : null}

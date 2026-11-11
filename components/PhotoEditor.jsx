@@ -13,15 +13,16 @@ const MAX_ZOOM = 6; // times the zoom that just fills the square
 
 /**
  * Square photo editor: drag to move, pinch to zoom, "Rotate" turns the photo
- * a quarter turn. The square is what customers see. Zooming out past "fills
- * the square" shows the whole photo; the empty space is filled with a blurred
- * copy of the photo (as the apps show it), and the photo stays centred that way.
+ * a quarter turn. The square is what customers see.
+ * Packaged items (fill = false): zooming out past "fills the square" shows the whole
+ * photo on plain white (as the apps show it), and the photo stays centred that way.
+ * Cooked food (fill = true): the photo always fills the square (as the apps show dishes).
  *
  * photo: { uri, width, height } (the uncropped photo when there is one)
  * crop:  last saved { rotate, x, y, size } in pixels of the turned photo, or null (start centred)
  * onDone({ rotate, x, y, size }) with the chosen square, in the same pixels.
  */
-export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adjust photo" }) {
+export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adjust photo", fill = false }) {
   const { width: screenW } = useWindowDimensions();
   const frame = Math.min(screenW - 32, 480);
   const [rotate, setRotate] = useState(crop?.rotate ?? 0);
@@ -31,9 +32,10 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
   const photoW = photo.width;
   const photoH = photo.height;
   const turned = turnedSize(photoW, photoH, rotate);
-  // fillScale: the photo just fills the square. minScale: the whole photo fits in it.
+  // fillScale: the photo just fills the square. minScale: the smallest zoom allowed
+  // (the whole photo fits in the square; dishes always fill it).
   const fillScale = frame / Math.min(turned.width, turned.height);
-  const minScale = frame / Math.max(turned.width, turned.height);
+  const minScale = fill ? fillScale : frame / Math.max(turned.width, turned.height);
 
   /**
    * Keeps the photo where it can be: covering the square when it is bigger than it,
@@ -75,7 +77,7 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
     tx.value = v.x;
     ty.value = v.y;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rotate, frame, photo.uri]);
+  }, [rotate, frame, photo.uri, fill]);
 
   // Both gestures apply small steps (changeX, scaleChange), so moving and zooming together add up.
   const pan = Gesture.Pan()
@@ -132,20 +134,17 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
           <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
             <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>{title}</Text>
             <Text style={{ color: "#C9D2DE", marginTop: 4 }}>
-              Drag to move, pinch to zoom. The square is what customers see. Zoom out to show the whole photo; the space around it is filled with a soft blur.
+              {fill
+                ? "Drag to move, pinch to zoom. The square is what customers see: dishes fill the whole square."
+                : "Drag to move, pinch to zoom. The square is what customers see. Zoom out to show the whole product; the space around it stays white."}
             </Text>
           </View>
 
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <GestureDetector gesture={gesture}>
-              <View style={{ width: frame, height: frame, overflow: "hidden", backgroundColor: "#000", borderWidth: 2, borderColor: "#fff" }}
+              {/* White around a photo that doesn't fill the square, as customers see it. */}
+              <View style={{ width: frame, height: frame, overflow: "hidden", backgroundColor: "#FFFFFF", borderWidth: 2, borderColor: "#fff" }}
                 accessibilityLabel="Photo crop area" accessibilityHint="Drag to move the photo, pinch to zoom">
-                {/* What customers see around a photo that doesn't fill the square. */}
-                <View pointerEvents="none" style={{ position: "absolute", width: photo.width * fillScale, height: photo.height * fillScale,
-                  left: (frame - photo.width * fillScale) / 2, top: (frame - photo.height * fillScale) / 2, transform: [{ rotate: `${rotate}deg` }] }}>
-                  <Image source={{ uri: photo.uri }} style={{ width: "100%", height: "100%" }} contentFit="fill" blurRadius={18} />
-                </View>
-                <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.18)" }} />
                 <Animated.View style={boxStyle}>
                   <Animated.View style={imageStyle}>
                     <Image source={{ uri: photo.uri }} style={{ width: "100%", height: "100%" }} contentFit="fill" />
