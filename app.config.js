@@ -11,5 +11,7 @@ export default ({ config }) => {
       ...config.android,
       ...(key ? { config: { ...(config.android?.config || {}), googleMaps: { apiKey: key } } } : {}),
     },
+    // Lets the map screen know whether this build has a key (without it the map would crash).
+    extra: { ...config.extra, mapsKeyInBuild: Boolean(key) },
   };
 };

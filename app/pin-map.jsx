@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +14,10 @@ import { C } from "@/lib/theme";
 // Load it carefully so the rest of the app keeps working until the app is rebuilt.
 let Maps = null;
 try { Maps = require("react-native-maps"); } catch { Maps = null; }
-const MapView = Maps?.default || null;
+// Without a Google Maps key the map crashes the app: don't show it then. (In a
+// development build this tells whether Metro sees the key; rebuild after adding it.)
+const mapsKeyInBuild = Constants.expoConfig?.extra?.mapsKeyInBuild === true;
+const MapView = (mapsKeyInBuild && Maps?.default) || null;
 const PROVIDER_GOOGLE = Maps?.PROVIDER_GOOGLE;
 
 const CLOSE = { latitudeDelta: 0.0025, longitudeDelta: 0.0025 }; // about one block
@@ -81,7 +85,7 @@ export default function PinMap() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.paper, padding: 24, justifyContent: "center" }}>
         <Text style={[s.title, { marginBottom: 8 }]}>Map not in this build yet</Text>
-        <Text style={[s.sub, { marginBottom: 16 }]}>This copy of the app was built before the map was added. Rebuild it (npx expo run:android) to use the map. For now, use "I'm at the store".</Text>
+        <Text style={[s.sub, { marginBottom: 16 }]}>This copy of the app was built without the map or without its Google Maps key. Set GOOGLE_MAPS_ANDROID_API_KEY (in .env.local) and rebuild the app to use the map. For now, use "I'm at the store".</Text>
         <Button title="Back" onPress={() => router.back()} />
       </SafeAreaView>
     );
