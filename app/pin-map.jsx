@@ -3,12 +3,18 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Notice, s } from "@/components/ui";
 import { DEFAULT_CENTER, placeToAddress, usePinPick } from "@/lib/pinPick";
 import { C } from "@/lib/theme";
+
+// The map is native code: an app built before it was added has no map yet.
+// Load it carefully so the rest of the app keeps working until the app is rebuilt.
+let Maps = null;
+try { Maps = require("react-native-maps"); } catch { Maps = null; }
+const MapView = Maps?.default || null;
+const PROVIDER_GOOGLE = Maps?.PROVIDER_GOOGLE;
 
 const CLOSE = { latitudeDelta: 0.0025, longitudeDelta: 0.0025 }; // about one block
 const round7 = (n) => Number(n.toFixed(7));
@@ -69,6 +75,16 @@ export default function PinMap() {
   function done() {
     confirm({ latitude: round7(center.latitude), longitude: round7(center.longitude), place: placeToAddress(place) });
     router.back();
+  }
+
+  if (!MapView) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.paper, padding: 24, justifyContent: "center" }}>
+        <Text style={[s.title, { marginBottom: 8 }]}>Map not in this build yet</Text>
+        <Text style={[s.sub, { marginBottom: 16 }]}>This copy of the app was built before the map was added. Rebuild it (npx expo run:android) to use the map. For now, use "I'm at the store".</Text>
+        <Button title="Back" onPress={() => router.back()} />
+      </SafeAreaView>
+    );
   }
 
   const area = place ? [place.street || place.name, place.district, place.city].filter(Boolean).join(", ") : "";
