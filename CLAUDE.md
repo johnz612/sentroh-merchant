@@ -4,7 +4,7 @@ Store app for the Sentroh marketplace. Read `D:\Sentroh\sentroh-platform\docs\PR
 
 ## Stack
 - Expo SDK 57, React Native 0.86, expo-router (screens in `app/`), JavaScript (JSX), path alias `@/` = repo root.
-- State: zustand (`lib/session.js`). Supabase JS only for phone sign-in (OTP) and photo uploads to signed URLs.
+- State: zustand (`lib/session.js`). Supabase JS only for sign-in (mobile number + password, same account as the customer app; SMS code only the first time or for a forgotten password, then a new password is set) and photo uploads to signed URLs.
 - All store data goes through marketplace-api: `/api/v1/me/*`, `/api/v1/merchant/sign-up`, `/api/v1/merchant/:merchantId/*` (`lib/api.js`, `storeApi`).
 - Push: expo-notifications, token saved with app `MERCHANT`; Android channels `urgent` (new orders) and `default` must match the server's `channelId`.
 - Env var names: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_MARKETPLACE_API_URL` (DEV only).
