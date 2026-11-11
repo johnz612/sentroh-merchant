@@ -9,12 +9,14 @@ import { C } from "@/lib/theme";
 
 /**
  * Store sign-in: mobile number + password (like the customer app; same account).
- * The SMS code is only for the first time (no password yet) and for a forgotten
- * password: code, then a new password. The app stays signed in after that.
+ * New here: "Create an account" (number + password, then the SMS code), then the
+ * app opens the store registration. The SMS code sign-in is for a forgotten
+ * password (or an account without one): code, then a new password.
+ * The app stays signed in after that.
  */
 export default function SignIn() {
   const load = useSession((st) => st.load);
-  const [step, setStep] = useState("password"); // password | code
+  const [step, setStep] = useState("password"); // password | code | signup | signup-code
   const [phoneInput, setPhoneInput] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -60,6 +62,36 @@ export default function SignIn() {
     setBusy(false);
   }
 
+  async function createAccount() {
+    if (!phone) return setError(phoneError);
+    if (newPassword.length < 8) return setError(new Error("Choose a password with at least 8 characters."));
+    setBusy(true); setError(null);
+    const { data, error: err } = await supabase.auth.signUp({ phone, password: newPassword });
+    setBusy(false);
+    const taken = (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0)
+      || /already registered|already exists|user already/i.test(err?.message || "");
+    if (taken) return setError(new Error("This number already has a Sentroh account. Go back and sign in (or use an SMS code if you forgot the password)."));
+    if (err) return setError(new Error(err.message || "Could not create the account. Try again."));
+    if (data?.session) { await load(); return; }
+    setStep("signup-code");
+  }
+
+  async function verifySignUp() {
+    if (!/^\d{6}$/.test(code)) return setError(new Error("Enter the 6-digit code from the SMS."));
+    setBusy(true); setError(null);
+    const { error: err } = await supabase.auth.verifyOtp({ phone, token: code, type: "sms" });
+    if (err) { setBusy(false); return setError(new Error("That code is wrong or expired. Check the SMS or send a new code.")); }
+    await load(); // no store yet: the app opens the store registration
+    setBusy(false);
+  }
+
+  async function resendSignUp() {
+    setBusy(true); setError(null);
+    const { error: err } = await supabase.auth.resend({ type: "sms", phone });
+    setBusy(false);
+    if (err) setError(new Error(err.message || "Could not send a new code. Try again."));
+  }
+
   function back() {
     setStep("password"); setCode(""); setNewPassword(""); setError(null);
   }
@@ -89,6 +121,42 @@ export default function SignIn() {
                 First time here, or forgot your password? Enter your number above and we'll text you a code; then you choose a password.
               </Text>
               <Text style={[s.sub, { marginTop: 16 }]}>Already use the Sentroh app? Your number and password work here too.</Text>
+              <View style={{ borderTopWidth: 1, borderColor: C.line, marginTop: 20, paddingTop: 20 }}>
+                <Text style={[s.label, { fontSize: 16 }]}>New to Sentroh?</Text>
+                <Text style={[s.sub, { marginBottom: 12 }]}>Create an account, then register your store. Sentroh checks every new store before it goes live.</Text>
+                <Button title="Create an account" kind="secondary" disabled={busy}
+                  onPress={() => { setStep("signup"); setError(null); setCode(""); setNewPassword(""); }} />
+              </View>
+            </>
+          ) : step === "signup" ? (
+            <>
+              <Text style={[s.title, { fontSize: 22 }]}>Create an account</Text>
+              <Text style={[s.sub, { marginBottom: 12 }]}>Step 1 of 2. Next you register your store.</Text>
+              <Field label="Mobile number" required keyboardType="phone-pad" autoComplete="tel" placeholder="0917 123 4567"
+                value={phoneInput} onChangeText={setPhoneInput} />
+              <Field label="Password" required hint="At least 8 characters. You sign in with your number and this password."
+                secureTextEntry autoComplete="new-password" autoCapitalize="none" value={newPassword} onChangeText={setNewPassword} />
+              <Notice error={error} />
+              <Button title="Send code" onPress={createAccount} busy={busy} />
+              <Text style={[s.sub, { marginTop: 8 }]}>We text a 6-digit code to check the number.</Text>
+              <Pressable onPress={back} style={{ marginTop: 16 }}>
+                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>I already have an account</Text>
+              </Pressable>
+            </>
+          ) : step === "signup-code" ? (
+            <>
+              <Text style={[s.title, { fontSize: 22 }]}>Enter the code</Text>
+              <Text style={[s.sub, { marginBottom: 12 }]}>We sent a 6-digit code by SMS to {phone}.</Text>
+              <Field label="Code" keyboardType="number-pad" autoComplete="sms-otp" maxLength={6}
+                value={code} onChangeText={(v) => setCode(v.replace(/\D/g, ""))} autoFocus />
+              <Notice error={error} />
+              <Button title="Create account" onPress={verifySignUp} busy={busy} />
+              <Pressable onPress={resendSignUp} disabled={busy} style={{ marginTop: 16 }}>
+                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Send a new code</Text>
+              </Pressable>
+              <Pressable onPress={back} style={{ marginTop: 12 }}>
+                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Back to sign in</Text>
+              </Pressable>
             </>
           ) : (
             <>
