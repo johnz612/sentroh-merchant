@@ -2,9 +2,9 @@ import { Image } from "expo-image";
 import { View } from "react-native";
 
 /**
- * A product photo in its box, the way customers see it in the Sentroh app:
- * - fill (cooked food): the photo fills the whole box, edges may be cut (like Grab Food).
- * - otherwise (packaged items): the whole photo is shown on plain white (like Shopee).
+ * A product photo in its box, as customers see it in the Sentroh app: the whole photo
+ * is always shown, never cut; the space around a photo that is not square is plain white.
+ * (fill = cover the box and cut the edges; not used for product photos.)
  */
 export function ProductImage({ uri, style, placeholder, recyclingKey, transition, fill = false }) {
   return (

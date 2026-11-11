@@ -20,7 +20,7 @@ const ProductRow = memo(function ProductRow({ p, onToggle, onOpen, onPrefetch, t
     <Pressable onPress={() => onOpen(p.id)} onPressIn={() => onPrefetch(p.id)} accessibilityRole="button">
       <View style={[s.card, s.row, { paddingVertical: 10 }]}>
         {p.thumbnailUrl || p.imageUrl
-          ? <ProductImage uri={p.thumbnailUrl || p.imageUrl} fill={p.productKind === "COOKED_FOOD"} style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12 }} recyclingKey={p.id} transition={100} />
+          ? <ProductImage uri={p.thumbnailUrl || p.imageUrl} style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12 }} recyclingKey={p.id} transition={100} />
           : <View style={{ width: 52, height: 52, borderRadius: 8, marginRight: 12, backgroundColor: C.paper, alignItems: "center", justifyContent: "center" }}><Ionicons name="image-outline" size={22} color={C.inkSoft} /></View>}
         <View style={{ flex: 1 }}>
           <Text style={[s.body, { fontWeight: "600" }]} numberOfLines={2}>{p.displayName || p.name}</Text>

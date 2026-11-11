@@ -46,14 +46,14 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
     return length >= frame ? Math.min(0, Math.max(frame - length, pos)) : (frame - length) / 2;
   }
 
-  /** Where the photo starts: at the saved square, or centred and just filling the square. */
+  /** Where the photo starts: at the saved square, or centred and whole (nothing cut; the store zooms in if it wants). */
   function startView() {
     const saved = crop && crop.rotate === rotate ? crop : null;
     if (saved) {
       const sc = Math.min(Math.max(frame / saved.size, minScale), fillScale * MAX_ZOOM);
       return { scale: sc, x: place(-saved.x * sc, turned.width * sc), y: place(-saved.y * sc, turned.height * sc) };
     }
-    return { scale: fillScale, x: (frame - turned.width * fillScale) / 2, y: (frame - turned.height * fillScale) / 2 };
+    return { scale: minScale, x: (frame - turned.width * minScale) / 2, y: (frame - turned.height * minScale) / 2 };
   }
   const first = startView();
 
