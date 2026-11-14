@@ -151,6 +151,15 @@ export default function Store() {
         </Card>
       </Pressable>
 
+      <Pressable onPress={() => router.push("/store-location")} accessibilityRole="button">
+        <Card tone={branch && !branch.hasLocation ? "attention" : undefined}>
+          <Label>Location</Label>
+          <Body>{branch?.address || "No address yet."}</Body>
+          {branch && !branch.hasLocation ? <Text style={s.sub}>No map pin yet. Drivers need it to find you.</Text> : null}
+          <Text style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 4 }]}>{role === "OWNER" ? "Check or change the address and map pin" : "View the address and map pin"}</Text>
+        </Card>
+      </Pressable>
+
       <Card tone={deposit.available != null && deposit.available < deposit.pickupMinimum ? "attention" : undefined}>
         <Label>Deposit</Label>
         <Body>{money(deposit.available)} available</Body>
@@ -174,7 +183,6 @@ export default function Store() {
         </Card>
       ) : null}
 
-      {branch?.address ? <Text style={[s.sub, { marginBottom: 16 }]}>{branch.name}: {branch.address}</Text> : null}
       <Button title="Sign out" kind="secondary" onPress={signOut} />
     </Screen>
   );
