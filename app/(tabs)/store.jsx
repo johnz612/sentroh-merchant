@@ -66,6 +66,21 @@ export default function Store() {
     }
   }
 
+  /** The store's own delivery range in km, or null for Sentroh's range. */
+  async function setRange(maxKm) {
+    setBusy(`RANGE${maxKm}`); setFailure(null);
+    try {
+      await call(`/branches/${branch.id}/delivery-range`, { method: "PUT", body: { maxKm } });
+      forgetCached(`${storeId}|/store`);
+      await reload();
+      toast(maxKm == null ? "You deliver as far as Sentroh allows." : `You now deliver up to ${maxKm} km.`);
+    } catch (err) {
+      setFailure(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function signOut() {
     await unregisterPush();
     await supabase.auth.signOut();
@@ -159,6 +174,32 @@ export default function Store() {
           <Text style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 4 }]}>{role === "OWNER" ? "Check or change the address and map pin" : "View the address and map pin"}</Text>
         </Card>
       </Pressable>
+
+      {branch?.deliveryRange?.platformMaxKm ? (() => {
+        const r = branch.deliveryRange;
+        const choices = [3, 5, 7, 10, 15].filter((km) => km < r.platformMaxKm);
+        const longTrips = r.platformMaxKm > r.normalMaxKm;
+        return (
+          <Card>
+            <Label>Delivery range</Label>
+            <Body>{r.ownMaxKm == null ? `Up to ${r.platformMaxKm} km (Sentroh's range)` : `Up to ${r.ownMaxKm} km`}</Body>
+            <Text style={[s.sub, { marginBottom: 8 }]}>
+              Customers farther than this don't see your store.
+              {longTrips ? ` Past ${r.normalMaxKm} km it is a long trip: the customer pays more for delivery${r.longTripMinSubtotal ? ` and orders at least ${money(r.longTripMinSubtotal)}` : ""}.` : ""}
+              {" "}Cooked food cools on long rides: choose a shorter range if your dishes don't travel well.
+            </Text>
+            <View style={[s.row, { flexWrap: "wrap", gap: 6 }]}>
+              <Chip label={`Sentroh's (${r.platformMaxKm} km)`} active={r.ownMaxKm == null}
+                onPress={() => canEdit && r.ownMaxKm != null && !busy && setRange(null)} />
+              {choices.map((km) => (
+                <Chip key={km} label={`${km} km`} active={r.ownMaxKm === km}
+                  onPress={() => canEdit && r.ownMaxKm !== km && !busy && setRange(km)} />
+              ))}
+            </View>
+            {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change this.</Text> : null}
+          </Card>
+        );
+      })() : null}
 
       <Card tone={deposit.available != null && deposit.available < deposit.pickupMinimum ? "attention" : undefined}>
         <Label>Deposit</Label>
