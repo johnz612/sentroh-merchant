@@ -66,6 +66,20 @@ export default function Store() {
     }
   }
 
+  async function setSharing(enabled) {
+    setBusy("SHARING"); setFailure(null);
+    try {
+      await call(`/branches/${branch.id}/sharing`, { method: "PUT", body: { enabled } });
+      forgetCached(`${storeId}|/store`);
+      await reload();
+      toast(enabled ? "Customers can share deliveries from your store." : "Shared delivery is off for your store.");
+    } catch (err) {
+      setFailure(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   /** The store's own delivery range in km, or null for Sentroh's range. */
   async function setRange(maxKm) {
     setBusy(`RANGE${maxKm}`); setFailure(null);
@@ -195,6 +209,16 @@ export default function Store() {
                 <Chip key={km} label={`${km} km`} active={r.ownMaxKm === km}
                   onPress={() => canEdit && r.ownMaxKm !== km && !busy && setRange(km)} />
               ))}
+            </View>
+            <View style={[s.row, { justifyContent: "space-between", marginTop: 14 }]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[s.body, { fontWeight: "600" }]}>Shared delivery</Text>
+                <Text style={s.sub}>
+                  Two neighbours far from you can split one trip. Both orders arrive together and one driver brings them.
+                </Text>
+              </View>
+              <Switch value={branch?.sharingEnabled !== false} disabled={!canEdit || busy === "SHARING"}
+                onValueChange={setSharing} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
             </View>
             {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change this.</Text> : null}
           </Card>

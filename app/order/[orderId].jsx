@@ -154,6 +154,9 @@ export default function OrderScreen() {
         <Body>
           {isPickup ? "Pickup at the store" : o.deliveryService === "STANDARD" ? `Standard delivery${o.standardDepartureAt ? `, driver comes for the ${clock(o.standardDepartureAt)} run` : ""}` : "Express delivery, a driver comes as soon as it is ready"}
         </Body>
+        {o.sharedTrip ? (
+          <Body muted>Shared trip: a neighbour's order from your store goes with the same driver. Have both ready together.</Body>
+        ) : null}
         {isPickup
           ? <Text style={[s.body, { fontWeight: "700", marginTop: 4 }]}>Collect {money(o.collectFromCustomer ?? o.subtotal)} from the customer ({o.paymentMethod === "GCASH" ? "GCash" : "cash"})</Text>
           : <Body muted>The driver collects payment from the customer ({o.paymentMethod === "GCASH" ? "GCash" : "cash"}).</Body>}
