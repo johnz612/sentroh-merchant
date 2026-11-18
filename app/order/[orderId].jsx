@@ -147,7 +147,7 @@ export default function OrderScreen() {
         <View style={[s.row, { justifyContent: "space-between" }]}>
           <Pill tone={o.status === "CANCELLED" ? "stopped" : o.status === "COMPLETED" ? "done" : o.status === "PENDING" || o.status === "STOCK_ISSUE" ? "attention" : "active"}
             text={STATUS_TEXT[o.status] || o.status} />
-          <Text style={s.sub}>Placed {clock(o.createdAt)}</Text>
+          <Text style={s.sub}>Placed {clock(o.createdAt)}{o.orderCode ? ` · ${o.orderCode}` : ""}</Text>
         </View>
         <Text style={{ fontSize: 28, fontWeight: "800", color: C.ink, marginTop: 8 }}>{money(o.subtotal)}</Text>
         <Text style={s.sub}>Items total</Text>
