@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
@@ -231,7 +231,9 @@ export default function OrderScreen() {
           <Row label="You earn" value={money(o.earnings ?? (o.subtotal || 0) - (o.commissionAmount || 0))} bold />
           <Text style={[s.sub, { marginTop: 4 }]}>
             {isPickup
-              ? "The customer pays you at pickup. The commission comes out of your deposit."
+              ? o.commissionAmount > 0
+                ? "The customer pays you at pickup. The commission comes out of your deposit."
+                : "The customer pays you at pickup. No Sentroh commission on this order."
               : "Sentroh sends your earnings in the weekly payout."}
           </Text>
         </View>
@@ -240,9 +242,6 @@ export default function OrderScreen() {
       <Card>
         <Label>Customer</Label>
         <Body>{o.customerName}</Body>
-        {o.customerPhone ? (
-          <Pressable onPress={() => Linking.openURL(`tel:${o.customerPhone}`)}><Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Call {o.customerPhone}</Text></Pressable>
-        ) : null}
         {!isPickup ? (
           <Body muted style={{ marginTop: 6 }}>
             The driver has the address and contacts the customer{o.deliveryDistanceKm != null ? ` (${Number(o.deliveryDistanceKm).toFixed(1)} km away)` : ""}.
@@ -250,6 +249,12 @@ export default function OrderScreen() {
         ) : null}
         {o.notes ? <Body style={{ marginTop: 6 }}>Note: {o.notes}</Body> : null}
       </Card>
+
+      <Messages order={o} onSend={async (key) => {
+        await call(`/orders/${orderId}/messages`, { method: "POST", body: { key } });
+        toast("Message sent to the customer.");
+        reload();
+      }} />
 
       <ActionSheet key={sheet?.title || "none"} sheet={sheet} onClose={() => setSheet(null)} onRun={(v) => (sheet?.run ? sheet.run(v) : Promise.resolve())} />
       {stockSheet ? (
@@ -265,5 +270,57 @@ function Row({ label, value, bold }) {
       <Text style={[s.body, bold && { fontWeight: "800" }]}>{label}</Text>
       <Text style={[s.body, bold && { fontWeight: "800" }]}>{value}</Text>
     </View>
+  );
+}
+
+const STORE_MESSAGES = [
+  ["READY", "Ready, please pick it up"],
+  ["LATE", "We're a few minutes late"],
+  ["CHECK_APP", "Please check your order in the app"],
+  ["CLOSING_SOON", "We're closing soon"],
+];
+const OPEN_STATUSES = ["PENDING", "PREPARING", "STOCK_ISSUE", "CONFIRMED", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY"];
+
+/**
+ * Fixed messages with the customer (no phone numbers either way, so orders stay on Sentroh).
+ * Sentroh support sees them too.
+ */
+function Messages({ order, onSend }) {
+  const [busy, setBusy] = useState(null);
+  const [failure, setFailure] = useState(null);
+  const open = OPEN_STATUSES.includes(order.status);
+  const list = order.messages || [];
+  if (!open && list.length === 0) return null;
+
+  async function send(key) {
+    setBusy(key); setFailure(null);
+    try { await onSend(key); } catch (err) { setFailure(err); } finally { setBusy(null); }
+  }
+
+  return (
+    <Card>
+      <Label>Messages with the customer</Label>
+      {list.map((m) => (
+        <View key={m.id} style={{ marginTop: 6, alignSelf: m.from === "STORE" ? "flex-end" : "flex-start", maxWidth: "85%",
+          backgroundColor: m.from === "STORE" ? "#E3F2EF" : "#F2F4F7", borderRadius: 10, padding: 8 }}>
+          <Text style={s.body}>{m.body}</Text>
+          <Text style={s.sub}>{m.from === "STORE" ? "You" : "Customer"} · {clock(m.createdAt)}</Text>
+        </View>
+      ))}
+      {open ? (
+        <>
+          <Text style={[s.sub, { marginTop: list.length ? 10 : 2 }]}>Send a message (the customer gets a notification):</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
+            {STORE_MESSAGES.map(([key, text]) => (
+              <Pressable key={key} disabled={!!busy} onPress={() => send(key)}
+                style={{ borderWidth: 1, borderColor: C.teal, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6, marginTop: 6, opacity: busy && busy !== key ? 0.5 : 1 }}>
+                <Text style={{ color: C.teal, fontWeight: "600" }}>{busy === key ? "Sending…" : text}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
+      <Notice error={failure} />
+    </Card>
   );
 }
