@@ -301,6 +301,66 @@ function Choices({ product, call, canEdit, onChange }) {
   );
 }
 
+/** When a deal of N days ends: "Today only" ends at midnight tonight, others at midnight N days later. */
+function dealEnd(days) {
+  const d = new Date();
+  d.setHours(23, 59, 0, 0);
+  d.setDate(d.getDate() + days - 1);
+  return d.toISOString();
+}
+
+const DEAL_LENGTHS = [{ days: 1, label: "Today only" }, { days: 3, label: "3 days" }, { days: 7, label: "7 days" }];
+
+const endText = (iso) => new Date(iso).toLocaleString("en-PH", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/**
+ * A lower Sentroh price for a few days ("Deals today" on the customer Home). The normal
+ * price stays (for POS products it keeps coming from Hatid POS). Owner or manager only.
+ */
+function Deal({ product, call, onChange }) {
+  const [price, setPrice] = useState("");
+  const [days, setDays] = useState(3);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const active = product.dealActive === true;
+  const off = active && product.price > 0 ? Math.round(((product.price - product.dealPrice) / product.price) * 100) : 0;
+
+  async function save(body) {
+    setBusy(true); setError(null);
+    try {
+      const json = await call(`/products/${product.id}/deal`, { method: "PUT", body });
+      onChange(json.product);
+      setPrice("");
+      toast(body.dealPrice == null ? "Deal ended." : "Deal saved. Customers see it in Deals today.");
+    } catch (err) { setError(err); } finally { setBusy(false); }
+  }
+
+  function start() {
+    const value = toNumber(price);
+    if (!(value > 0) || value >= product.price) {
+      setError({ message: `Enter a deal price lower than ${money(product.price)}.` });
+      return;
+    }
+    save({ dealPrice: value, endsAt: dealEnd(days) });
+  }
+
+  return (
+    <Card>
+      <Label>{active ? `On deal: ${money(product.dealPrice)} (${off}% off)` : "Deal price"}</Label>
+      <Text style={[s.sub, { marginBottom: 8 }]}>{active
+        ? `Customers pay ${money(product.dealPrice)} instead of ${money(product.price)} until ${endText(product.dealEndsAt)}. Then the normal price comes back by itself.`
+        : `Sell it for less for a few days. It shows in "Deals today" on the customer app, with ${money(product.price)} crossed out. Your normal price${product.managedByPos ? " in Hatid POS" : ""} stays the same.`}</Text>
+      <Notice error={error} />
+      <Field label={active ? "New deal price" : "Deal price"} keyboardType="decimal-pad" placeholder={`Lower than ${money(product.price)}`} value={price} onChangeText={setPrice} />
+      <View style={[s.row, { flexWrap: "wrap", marginBottom: 8 }]}>
+        {DEAL_LENGTHS.map((l) => <Chip key={l.days} label={l.label} active={days === l.days} onPress={() => setDays(l.days)} />)}
+      </View>
+      <Button title={active ? "Change deal" : "Start deal"} kind="secondary" busy={busy} onPress={start} />
+      {active ? <Button title="End deal now" kind="secondary" disabled={busy} style={{ marginTop: 8 }} onPress={() => save({ dealPrice: null })} /> : null}
+    </Card>
+  );
+}
+
 export default function ProductScreen() {
   const { productId, askForPhoto } = useLocalSearchParams();
   const creating = productId === "new";
@@ -577,6 +637,8 @@ export default function ProductScreen() {
         )}
         <Field label="Description" optional hint={cooked ? "Recommended: what's in it and how big it is, e.g. good for 1, with rice and egg." : "What's in it, flavor or size. Shown on the product page."} value={f.description} onChangeText={set("description")} multiline editable={canEdit} />
       </Card>
+
+      {!creating && canEdit && product.onSale ? <Deal product={product} call={call} onChange={setProduct} /> : null}
 
       {!creating && !pos && product.trackStock ? (
         <Card>
