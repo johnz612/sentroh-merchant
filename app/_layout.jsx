@@ -3,6 +3,7 @@ import {
 } from "@expo-google-fonts/archivo";
 import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,6 +18,12 @@ import { useSession } from "@/lib/session";
 import { warmUpStore } from "@/lib/warmUp";
 import { supabase } from "@/lib/supabase";
 import { C } from "@/lib/theme";
+
+// Keep the opening screen (logo) up until the store is loaded, so there is no blank page in between.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+try { SplashScreen.setOptions({ fade: true, duration: 250 }); } catch { /* older native build */ }
+const SPLASH_MAX_MS = 6000; // never keep the logo longer than this (e.g. no internet)
+const hideSplash = () => SplashScreen.hideAsync().catch(() => {});
 
 /** Sends people to the right place: sign-in, store registration, or the store tabs. */
 function useGate() {
@@ -83,6 +90,10 @@ function Root() {
   usePush();
   useWarmUp();
 
+  useEffect(() => {
+    if (status !== "loading") hideSplash();
+  }, [status]);
+
   if (status === "loading") return <Screen><Loading what="Opening your store" /></Screen>;
   if (status === "error") {
     return (
@@ -114,6 +125,10 @@ function Root() {
 export default function Layout() {
   // Archivo ships inside the app; wait the moment it takes so no screen shows in the wrong font.
   const [fontsReady] = useFonts({ Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold, Archivo_700Bold, Archivo_800ExtraBold });
+  useEffect(() => {
+    const t = setTimeout(hideSplash, SPLASH_MAX_MS);
+    return () => clearTimeout(t);
+  }, []);
   if (!fontsReady) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
