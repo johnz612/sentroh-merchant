@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, View } from "react-native";
+import { Text, TextInput } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductImage } from "@/components/ProductImage";
@@ -36,7 +37,7 @@ const ProductRow = memo(function ProductRow({ p, onToggle, onOpen, onPrefetch, t
           {p.hiddenReason === "HIDDEN_BY_SENTROH" && p.hiddenBySentrohReason ? <Text style={[s.sub, { color: C.red }]}>{p.hiddenBySentrohReason}</Text> : null}
         </View>
         <Switch value={p.onSale} onValueChange={(v) => onToggle(p, v)} disabled={toggling}
-          trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" accessibilityLabel={`On sale: ${p.name}`} />
+          trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" accessibilityLabel={`On sale: ${p.name}`} />
       </View>
     </Pressable>
   );
@@ -160,7 +161,7 @@ export default function Products() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        <TextInput placeholder="Search products" placeholderTextColor="#8A97A8" value={search} onChangeText={setSearch} style={[s.input, { marginBottom: 8 }]} returnKeyType="search" />
+        <TextInput placeholder="Search products" placeholderTextColor={C.inkSoft} value={search} onChangeText={setSearch} style={[s.input, { marginBottom: 8 }]} returnKeyType="search" />
       </View>
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}>

@@ -1,7 +1,8 @@
 import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { Button, Card, Chip, Field, FieldTag, Notice, Screen, Title, s } from "@/components/ui";
 import { api } from "@/lib/api";

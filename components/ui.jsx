@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text, TextInput } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { C } from "@/lib/theme";
@@ -70,7 +71,7 @@ export function Field({ label, hint, required, optional, ...props }) {
     <View style={{ marginBottom: 12 }}>
       <Text style={s.label}>{label}{required || optional ? <FieldTag required={!!required} /> : null}</Text>
       {hint ? <Text style={[s.sub, { marginBottom: 4 }]}>{hint}</Text> : null}
-      <TextInput placeholderTextColor="#8A97A8" style={[s.input, props.editable === false && { backgroundColor: C.paper, color: C.inkSoft }]} {...props} />
+      <TextInput placeholderTextColor={C.inkSoft} style={[s.input, props.editable === false && { color: C.inkSoft }]} {...props} />
     </View>
   );
 }
@@ -118,7 +119,7 @@ export function Skeleton({ rows = 6, kind = "list", what = "Loading", pad = 16 }
   );
 }
 
-const SKELETON = "#E3E9E7";
+const SKELETON = "#ECECE8";
 
 export function Loading({ what = "Loading" }) {
   return (
@@ -139,37 +140,37 @@ export function Empty({ title, children }) {
 }
 
 export function Pill({ text, tone = "muted" }) {
-  const look = { attention: [C.mangoWash, C.mangoInk], active: [C.tealWash, C.teal], done: [C.greenWash, C.green], stopped: [C.redWash, C.red], muted: ["#ECEFF0", C.inkSoft] }[tone];
+  const look = { attention: [C.mangoWash, C.mangoInk], active: [C.tealWash, C.teal], done: [C.greenWash, C.green], stopped: [C.redWash, C.red], muted: [C.soft, C.inkSoft] }[tone];
   return <Text style={[s.pill, { backgroundColor: look[0], color: look[1] }]}>{text}</Text>;
 }
 
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.paper },
   content: { padding: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
+  title: { fontSize: 24, lineHeight: 30, fontWeight: "800", color: C.ink },
   sub: { fontSize: 13, color: C.inkSoft, lineHeight: 18 },
-  body: { fontSize: 15, color: C.ink, lineHeight: 21 },
-  label: { fontSize: 13, fontWeight: "700", color: C.ink, marginBottom: 4 },
-  card: { backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 14, marginBottom: 12 },
+  body: { fontSize: 15, color: C.ink, lineHeight: 22, fontWeight: "500" },
+  label: { fontSize: 13, fontWeight: "700", color: C.ink, marginBottom: 6 },
+  card: { backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.line, padding: 16, marginBottom: 12 },
   cardAttention: { backgroundColor: C.mangoWash, borderColor: "#F3D36B" },
   cardDanger: { backgroundColor: C.redWash, borderColor: "#F0B4AE" },
-  btn: { minHeight: 48, borderRadius: 10, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  btnPrimary: { backgroundColor: C.teal, borderColor: C.teal },
-  btnSecondary: { backgroundColor: C.surface, borderColor: "#B9C6C1" },
+  btn: { minHeight: 48, borderRadius: 999, paddingHorizontal: 20, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  btnPrimary: { backgroundColor: C.ink, borderColor: C.ink },
+  btnSecondary: { backgroundColor: C.surface, borderColor: "#CFCFCA" },
   btnDanger: { backgroundColor: C.surface, borderColor: "#F0B4AE" },
   btnAttention: { backgroundColor: C.mango, borderColor: C.mango },
   btnText: { fontSize: 16, fontWeight: "700" },
   btnTextLight: { color: "#fff" },
   btnTextDark: { color: C.ink },
   btnTextRed: { color: C.red },
-  chip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, marginRight: 8 },
+  chip: { minHeight: 36, justifyContent: "center", paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, marginRight: 8 },
   chipActive: { backgroundColor: C.ink, borderColor: C.ink },
-  chipText: { fontSize: 13, color: C.inkSoft, fontWeight: "600" },
-  input: { borderWidth: 1, borderColor: "#B9C6C1", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: C.ink, backgroundColor: "#fff" },
-  notice: { borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 14, overflow: "hidden" },
+  chipText: { fontSize: 13, color: C.ink, fontWeight: "600" },
+  input: { minHeight: 48, borderWidth: 1, borderColor: C.soft, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: C.ink, backgroundColor: C.soft },
+  notice: { borderRadius: 12, padding: 12, marginBottom: 12, fontSize: 14, overflow: "hidden" },
   noticeError: { backgroundColor: C.redWash, color: C.red },
   noticeOk: { backgroundColor: C.greenWash, color: C.green },
-  noticeInfo: { backgroundColor: C.tealWash, color: C.teal },
+  noticeInfo: { backgroundColor: C.mangoWash, color: C.mangoInk },
   pill: { alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 2, borderRadius: 999, fontSize: 12, fontWeight: "700", overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center" },
 });

@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { Modal, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { Modal, Pressable, useWindowDimensions, View } from "react-native";
+import { Text } from "@/components/AppText";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -130,10 +131,10 @@ export function PhotoEditor({ photo, crop, busy, onCancel, onDone, title = "Adju
   return (
     <Modal animationType="slide" visible onRequestClose={busy ? undefined : onCancel}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.ink }}>
           <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
             <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>{title}</Text>
-            <Text style={{ color: "#C9D2DE", marginTop: 4 }}>
+            <Text style={{ color: "#D6D6D2", marginTop: 4 }}>
               {fill
                 ? "Drag to move, pinch to zoom. The square is what customers see: dishes fill the whole square."
                 : "Drag to move, pinch to zoom. The square is what customers see. Zoom out to show the whole product; the space around it stays white."}

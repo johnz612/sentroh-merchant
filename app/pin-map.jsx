@@ -3,7 +3,8 @@ import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Notice, s } from "@/components/ui";

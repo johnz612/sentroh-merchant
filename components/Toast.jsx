@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useRef } from "react";
-import { Animated, Pressable, Text } from "react-native";
+import { Animated, Pressable } from "react-native";
+import { Text } from "@/components/AppText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { C } from "@/lib/theme";
@@ -29,7 +30,7 @@ export function Toast() {
         style={{ flexDirection: "row", alignItems: "center", backgroundColor: error ? C.red : C.ink, borderRadius: 24,
           paddingVertical: 12, paddingHorizontal: 18, maxWidth: 480, elevation: 6,
           shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } }}>
-        <Ionicons name={error ? "alert-circle" : "checkmark-circle"} size={20} color={error ? "#fff" : "#7FD1A8"} style={{ marginRight: 8 }} />
+        <Ionicons name={error ? "alert-circle" : "checkmark-circle"} size={20} color={error ? "#fff" : C.mango} style={{ marginRight: 8 }} />
         <Text style={{ color: "#fff", fontWeight: "600", flexShrink: 1 }}>{current.text}</Text>
       </Pressable>
     </Animated.View>

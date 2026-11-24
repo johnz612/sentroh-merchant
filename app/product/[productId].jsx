@@ -1,7 +1,8 @@
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Switch, View } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Field, FieldTag, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
@@ -568,7 +569,7 @@ export default function ProductScreen() {
             <Label>On sale</Label>
             <Text style={s.sub}>{cooked ? "Off means customers can't order it. A dish needs a photo and a menu section first." : "Off means customers can't order it."}</Text>
           </View>
-          <Switch value={f.onSale} onValueChange={creating ? set("onSale") : toggleOnSale} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+          <Switch value={f.onSale} onValueChange={creating ? set("onSale") : toggleOnSale} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
         </View>
       </Card>
 
@@ -623,7 +624,7 @@ export default function ProductScreen() {
                 <Text style={[s.body, { fontWeight: "600" }]}>Count stock</Text>
                 <Text style={s.sub}>{f.trackStock ? "Sales lower the count; at 0 customers can't order it." : "No count. Use \"Sold out today\" when you run out."}</Text>
               </View>
-              <Switch value={f.trackStock} disabled={!canEdit} onValueChange={set("trackStock")} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+              <Switch value={f.trackStock} disabled={!canEdit} onValueChange={set("trackStock")} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
             </View>
             {creating && f.trackStock ? (
               <Field label={f.sellingType === "WEIGHT" ? "Stock (kg)" : "Stock"} optional hint="How many you have now. Empty means 0, and customers can't order it until you add stock." keyboardType="decimal-pad" value={f.stockQty} onChangeText={set("stockQty")} />

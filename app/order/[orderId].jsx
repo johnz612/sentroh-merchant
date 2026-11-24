@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLoader, useStore } from "@/components/hooks";
@@ -219,7 +220,7 @@ export default function OrderScreen() {
               <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>{qty(i.qty, i.stockUnit)} {i.name}</Text>
               <Text style={s.body}>{money(i.lineTotal)}</Text>
             </View>
-            {o.posItemCount > 0 && i.fromPos === false ? <Text style={[s.sub, { color: C.teal, fontWeight: "600" }]}>Sentroh only (not in POS)</Text> : null}
+            {o.posItemCount > 0 && i.fromPos === false ? <Text style={[s.sub, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Sentroh only (not in POS)</Text> : null}
             {i.choicesText ? <Text style={[s.body, { color: C.inkSoft }]}>{i.choicesText}</Text> : null}
             {i.note ? <Text style={[s.body, { color: C.mangoInk, fontWeight: "600" }]}>Note: {i.note}</Text> : null}
             {i.availableQty != null && i.availableQty < i.qty ? <Text style={[s.sub, { color: C.mangoInk }]}>You have {i.availableQty}</Text> : null}
@@ -316,7 +317,7 @@ function Messages({ order, onSend }) {
       <Label>Messages with the customer</Label>
       {list.map((m) => (
         <View key={m.id} style={{ marginTop: 6, alignSelf: m.from === "STORE" ? "flex-end" : "flex-start", maxWidth: "85%",
-          backgroundColor: m.from === "STORE" ? "#E3F2EF" : "#F2F4F7", borderRadius: 10, padding: 8 }}>
+          backgroundColor: m.from === "STORE" ? C.mangoWash : C.soft, borderRadius: 12, padding: 8 }}>
           <Text style={s.body}>{m.body}</Text>
           <Text style={s.sub}>{m.from === "STORE" ? "You" : "Customer"} · {clock(m.createdAt)}</Text>
         </View>
@@ -328,7 +329,7 @@ function Messages({ order, onSend }) {
             {STORE_MESSAGES.filter(([key]) => keys.includes(key)).map(([key, text]) => (
               <Pressable key={key} disabled={!!busy} onPress={() => send(key)}
                 style={{ borderWidth: 1, borderColor: C.teal, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6, marginTop: 6, opacity: busy && busy !== key ? 0.5 : 1 }}>
-                <Text style={{ color: C.teal, fontWeight: "600" }}>{busy === key ? "Sending…" : text}</Text>
+                <Text style={{ color: C.ink, fontWeight: "700", textDecorationLine: "underline" }}>{busy === key ? "Sending…" : text}</Text>
               </Pressable>
             ))}
           </View>

@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import { Pressable, Switch, View } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Chip, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
@@ -138,7 +139,7 @@ export default function Store() {
           </View>
           <Switch value={branch?.acceptOrdersAutomatically === true} disabled={!canEdit || busy === "AUTO"}
             onValueChange={(v) => settings({ acceptOrdersAutomatically: v }, "AUTO")}
-            trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+            trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
         </View>
         {(merchant.defaultProductKind === "COOKED_FOOD" || merchant.merchantType === "FOOD_RESTAURANT") && branch ? (
           <View style={{ marginTop: 12 }}>
@@ -176,7 +177,7 @@ export default function Store() {
         <Card>
           <Label>Store hours</Label>
           <Body>{branch?.now?.hasHours ? `Last orders ${branch.orderCutoffMinutes} min before closing.` : "Not set yet."}</Body>
-          <Text style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 4 }]}>{canEdit ? "View or change hours" : "View hours"}</Text>
+          <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline", marginTop: 4 }]}>{canEdit ? "View or change hours" : "View hours"}</Text>
         </Card>
       </Pressable>
 
@@ -185,7 +186,7 @@ export default function Store() {
           <Label>Location</Label>
           <Body>{branch?.address || "No address yet."}</Body>
           {branch && !branch.hasLocation ? <Text style={s.sub}>No map pin yet. Drivers need it to find you.</Text> : null}
-          <Text style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 4 }]}>{role === "OWNER" ? "Check or change the address and map pin" : "View the address and map pin"}</Text>
+          <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline", marginTop: 4 }]}>{role === "OWNER" ? "Check or change the address and map pin" : "View the address and map pin"}</Text>
         </Card>
       </Pressable>
 
@@ -218,7 +219,7 @@ export default function Store() {
                 </Text>
               </View>
               <Switch value={branch?.sharingEnabled !== false} disabled={!canEdit || busy === "SHARING"}
-                onValueChange={setSharing} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+                onValueChange={setSharing} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
             </View>
             {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change this.</Text> : null}
           </Card>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Field, Notice, s } from "@/components/ui";
@@ -100,8 +101,11 @@ export default function SignIn() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.ink }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <View style={{ padding: 24, paddingTop: 48 }}>
-          <Text style={{ color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -0.5 }}>Sentroh</Text>
-          <Text style={{ color: "#C3CEE2", fontSize: 17, marginTop: 4 }}>For stores: receive orders, manage products and hours.</Text>
+          <Text style={{ color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -0.5 }}>Sentroh<Text style={{ color: C.mango }}>.</Text></Text>
+          <View style={{ alignSelf: "flex-start", backgroundColor: C.mango, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 }}>
+            <Text style={{ color: C.ink, fontSize: 13, fontWeight: "800" }}>STORE</Text>
+          </View>
+          <Text style={{ color: "#D6D6D2", fontSize: 17, marginTop: 8 }}>Receive orders, manage products and hours.</Text>
         </View>
         <ScrollView style={{ flex: 1, backgroundColor: C.paper, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
           contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
@@ -115,7 +119,7 @@ export default function SignIn() {
               <Notice error={error} />
               <Button title="Sign in" onPress={signIn} busy={busy} />
               <Pressable onPress={sendCode} disabled={busy} style={{ marginTop: 20 }} accessibilityRole="button">
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Sign in with an SMS code</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Sign in with an SMS code</Text>
               </Pressable>
               <Text style={[s.sub, { marginTop: 4 }]}>
                 First time here, or forgot your password? Enter your number above and we'll text you a code; then you choose a password.
@@ -140,7 +144,7 @@ export default function SignIn() {
               <Button title="Send code" onPress={createAccount} busy={busy} />
               <Text style={[s.sub, { marginTop: 8 }]}>We text a 6-digit code to check the number.</Text>
               <Pressable onPress={back} style={{ marginTop: 16 }}>
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>I already have an account</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>I already have an account</Text>
               </Pressable>
             </>
           ) : step === "signup-code" ? (
@@ -152,10 +156,10 @@ export default function SignIn() {
               <Notice error={error} />
               <Button title="Create account" onPress={verifySignUp} busy={busy} />
               <Pressable onPress={resendSignUp} disabled={busy} style={{ marginTop: 16 }}>
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Send a new code</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Send a new code</Text>
               </Pressable>
               <Pressable onPress={back} style={{ marginTop: 12 }}>
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Back to sign in</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Back to sign in</Text>
               </Pressable>
             </>
           ) : (
@@ -169,10 +173,10 @@ export default function SignIn() {
               <Notice error={error} />
               <Button title="Sign in" onPress={verify} busy={busy} />
               <Pressable onPress={sendCode} disabled={busy} style={{ marginTop: 16 }}>
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Send a new code</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Send a new code</Text>
               </Pressable>
               <Pressable onPress={back} style={{ marginTop: 12 }}>
-                <Text style={[s.body, { color: C.teal, fontWeight: "600" }]}>Back to sign in with password</Text>
+                <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline" }]}>Back to sign in with password</Text>
               </Pressable>
             </>
           )}

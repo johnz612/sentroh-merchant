@@ -1,7 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { memo, useEffect, useState } from "react";
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { cached, prefetch } from "@/lib/cache";

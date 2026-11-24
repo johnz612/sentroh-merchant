@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Switch, Text, TextInput, View } from "react-native";
+import { Switch, View } from "react-native";
+import { Text, TextInput } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Field, Notice, s, Screen, Skeleton } from "@/components/ui";
@@ -95,13 +96,13 @@ export default function Hours() {
             <Text style={[s.body, { fontWeight: "700" }]}>{day}</Text>
             <View style={s.row}>
               <Text style={[s.sub, { marginRight: 8 }]}>{days[i].open ? "Open" : "Closed"}</Text>
-              <Switch value={days[i].open} disabled={!canEdit} onValueChange={(v) => update(i, { open: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+              <Switch value={days[i].open} disabled={!canEdit} onValueChange={(v) => update(i, { open: v })} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
             </View>
           </View>
           {days[i].open ? (
             <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
               <Text style={s.sub}>Open 24 hours</Text>
-              <Switch value={days[i].allDay} disabled={!canEdit} onValueChange={(v) => update(i, { allDay: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff"
+              <Switch value={days[i].allDay} disabled={!canEdit} onValueChange={(v) => update(i, { allDay: v })} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff"
                 accessibilityLabel={`${day} open 24 hours`} />
             </View>
           ) : null}
@@ -113,7 +114,7 @@ export default function Hours() {
             </View>
           ) : null}
           {canEdit && i === 0 && days[0].open ? (
-            <Text onPress={() => setDays((d) => d.map(() => ({ ...d[0] })))} style={[s.body, { color: C.teal, fontWeight: "600", marginTop: 8 }]}>
+            <Text onPress={() => setDays((d) => d.map(() => ({ ...d[0] })))} style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline", marginTop: 8 }]}>
               Use Monday's hours for every day
             </Text>
           ) : null}

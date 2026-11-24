@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, Switch, Text, View } from "react-native";
+import { Alert, Pressable, Switch, View } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Button, Card, Chip, Field, Label, Notice, s, Screen, Skeleton } from "@/components/ui";
@@ -126,7 +127,7 @@ export default function ChoiceGroupScreen() {
         <Text style={s.sub}>{rule}</Text>
         <View style={[s.row, { justifyContent: "space-between", marginTop: 12 }]}>
           <Text style={[s.body, { fontWeight: "600" }]}>Show these choices</Text>
-          <Switch value={f.isActive} disabled={!canEdit} onValueChange={(v) => change({ isActive: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+          <Switch value={f.isActive} disabled={!canEdit} onValueChange={(v) => change({ isActive: v })} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
         </View>
       </Card>
 
@@ -150,9 +151,9 @@ export default function ChoiceGroupScreen() {
             </View>
             <View style={[s.row, { justifyContent: "space-between" }]}>
               <Text style={s.sub}>Ticked at first</Text>
-              <Switch value={o.isDefault} disabled={!canEdit} onValueChange={(v) => changeOption(o.key, { isDefault: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+              <Switch value={o.isDefault} disabled={!canEdit} onValueChange={(v) => changeOption(o.key, { isDefault: v })} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
               <Text style={[s.sub, { marginLeft: 12 }]}>On</Text>
-              <Switch value={o.isActive} disabled={!canEdit} onValueChange={(v) => changeOption(o.key, { isActive: v })} trackColor={{ true: C.teal, false: "#C8D1CE" }} thumbColor="#fff" />
+              <Switch value={o.isActive} disabled={!canEdit} onValueChange={(v) => changeOption(o.key, { isActive: v })} trackColor={{ true: C.teal, false: "#CFCFCA" }} thumbColor="#fff" />
             </View>
           </View>
         ))}

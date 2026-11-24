@@ -1,7 +1,7 @@
 import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Text } from "react-native";
+import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
 import { Body, Button, Card, Field, FieldTag, Notice, s, Screen, Skeleton } from "@/components/ui";
