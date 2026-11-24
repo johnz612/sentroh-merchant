@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -101,8 +101,9 @@ export default function SignIn() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.ink }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <View style={{ padding: 24, paddingTop: 48 }}>
-          <Text style={{ color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -0.5 }}>Sentroh<Text style={{ color: C.mango }}>.</Text></Text>
-          <View style={{ alignSelf: "flex-start", backgroundColor: C.mango, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 }}>
+          <Image source={require("../assets/sentroh-logo-wide.png")} accessibilityLabel="Sentroh"
+            style={{ width: 230, height: 48 }} resizeMode="contain" />
+          <View style={{ alignSelf: "flex-start", backgroundColor: C.mango, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 12 }}>
             <Text style={{ color: C.ink, fontSize: 13, fontWeight: "800" }}>STORE</Text>
           </View>
           <Text style={{ color: "#D6D6D2", fontSize: 17, marginTop: 8 }}>Receive orders, manage products and hours.</Text>
