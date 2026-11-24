@@ -133,6 +133,15 @@ export default function Earnings() {
         ))}
       </Card>
 
+      <Pressable onPress={() => router.push("/report")} accessibilityRole="button"
+        style={({ pressed }) => [s.card, s.row, { justifyContent: "space-between" }, pressed && { opacity: 0.6 }]}>
+        <View style={{ flexShrink: 1 }}>
+          <Text style={[s.body, { fontWeight: "700" }]}>Email a report</Text>
+          <Text style={s.sub}>Orders and payouts as a spreadsheet for Excel.</Text>
+        </View>
+        <Text style={{ fontSize: 22, color: C.ink }}>›</Text>
+      </Pressable>
+
       {payouts.length > 0 ? (
         <Card>
           <Label>Payouts received</Label>

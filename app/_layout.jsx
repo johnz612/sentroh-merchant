@@ -106,6 +106,7 @@ function Root() {
       <Stack.Screen name="store-location" options={{ title: "Store location" }} />
       <Stack.Screen name="choice-group" options={{ title: "Choices" }} />
       <Stack.Screen name="payout/[payoutId]" options={{ title: "Payout" }} />
+      <Stack.Screen name="report" options={{ title: "Email a report" }} />
     </Stack>
   );
 }
