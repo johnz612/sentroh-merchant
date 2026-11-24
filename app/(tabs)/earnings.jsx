@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, View } from "react-native";
 import { Text } from "@/components/AppText";
 
 import { useLoader, useStore } from "@/components/hooks";
@@ -11,9 +12,31 @@ const PERIODS = [["TODAY", "Today"], ["YESTERDAY", "Yesterday"], ["THIS_WEEK", "
 const METHOD = { GCASH: "GCash", BANK: "Bank", CASH: "Cash" };
 
 const day = (v) => (v ? new Date(v).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric" }) : "");
+const weekday = (v) => (v ? new Date(v).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric" }) : "");
 const time = (v) => (v ? new Date(v).toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "");
 
+/** Unpaid delivery orders grouped by the Monday they are due. */
+function dueGroups(orders) {
+  const groups = new Map();
+  for (const o of orders) {
+    if (!groups.has(o.dueOn)) groups.set(o.dueOn, { dueOn: o.dueOn, orders: [], amount: 0 });
+    const g = groups.get(o.dueOn);
+    g.orders.push(o);
+    g.amount = Math.round((g.amount + o.paidBySentroh) * 100) / 100;
+  }
+  return [...groups.values()];
+}
+
+/** The tag on an order row: how this order's money reached (or will reach) the store. */
+function SettlementTag({ o }) {
+  if (o.settlement === "AT_STORE") return <Pill text="Cash at store" tone="muted" />;
+  if (o.settlement === "PAID") return <Pill text={`Paid ${day(o.payout?.paidAt)}`} tone="done" />;
+  const late = o.dueOn && new Date(o.dueOn).getTime() + 3 * 86400000 < Date.now();
+  return <Pill text={late ? `Late · due ${day(o.dueOn)}` : `Due ${day(o.dueOn)}`} tone={late ? "stopped" : "attention"} />;
+}
+
 export default function Earnings() {
+  const router = useRouter();
   const { storeId, call, canEdit, keyFor } = useStore();
   const [period, setPeriod] = useState("TODAY");
   const { data, error } = useLoader(
@@ -69,6 +92,15 @@ export default function Earnings() {
               : "Paid every week. This week's orders come in next week's payout."
             : "Nothing waiting. You're all paid."}
         </Text>
+        {dueGroups(owed.unpaidOrders || []).map((g) => (
+          <View key={g.dueOn} style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#F3D36B" }}>
+            <View style={[s.row, { justifyContent: "space-between" }]}>
+              <Text style={[s.body, { fontWeight: "700" }]}>Due {weekday(g.dueOn)}</Text>
+              <Text style={[s.body, { fontWeight: "700" }]}>{money(g.amount)}</Text>
+            </View>
+            <Text style={s.sub}>{g.orders.length} order{g.orders.length === 1 ? "" : "s"}: {g.orders.map((o) => `#${o.orderNumber}`).join(", ")}</Text>
+          </View>
+        ))}
       </Card>
 
       {/* 3. Pickup cash, only when there was any. */}
@@ -83,34 +115,39 @@ export default function Earnings() {
       <Card>
         <Label>Orders</Label>
         {orders.length === 0 ? <Body muted>No completed orders {periodName}.</Body> : orders.map((o) => (
-          <View key={o.id} style={{ paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }}>
+          <Pressable key={o.id} disabled={!o.payout} onPress={() => router.push(`/payout/${o.payout.id}`)}
+            accessibilityRole={o.payout ? "button" : undefined}
+            style={({ pressed }) => [{ paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }, pressed && { opacity: 0.6 }]}>
             <View style={[s.row, { justifyContent: "space-between" }]}>
               <Text style={[s.body, { fontWeight: "700" }]}>#{o.orderNumber}</Text>
               <Text style={[s.body, { fontWeight: "700" }]}>{money(o.earnings)}</Text>
             </View>
             <View style={[s.row, { justifyContent: "space-between", marginTop: 2 }]}>
-              <Text style={s.sub}>{time(o.completedAt)} · {o.fulfillmentType === "PICKUP" ? "Pickup" : "Delivery"}</Text>
-              {o.fulfillmentType === "PICKUP"
-                ? <Pill text="Cash at store" tone="muted" />
-                : <Pill text={o.paidOut ? "Paid" : "Not paid yet"} tone={o.paidOut ? "done" : "attention"} />}
+              <Text style={s.sub}>{period === "TODAY" ? time(o.completedAt) : `${day(o.completedAt)}, ${time(o.completedAt)}`} · {o.fulfillmentType === "PICKUP" ? "Pickup" : "Delivery"}</Text>
+              <SettlementTag o={o} />
             </View>
-          </View>
+            {o.payout ? (
+              <Text style={[s.sub, { marginTop: 2 }]}>{METHOD[o.payout.method] || o.payout.method} · Ref {o.payout.reference} · See payout ›</Text>
+            ) : null}
+          </Pressable>
         ))}
       </Card>
 
       {payouts.length > 0 ? (
         <Card>
           <Label>Payouts received</Label>
+          <Text style={[s.sub, { marginBottom: 4 }]}>Tap a payout to see every order it paid.</Text>
           {payouts.map((p) => (
-            <View key={p.id} style={{ paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }}>
+            <Pressable key={p.id} onPress={() => router.push(`/payout/${p.id}`)} accessibilityRole="button"
+              style={({ pressed }) => [{ paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }, pressed && { opacity: 0.6 }]}>
               <View style={[s.row, { justifyContent: "space-between" }]}>
                 <Text style={[s.body, { fontWeight: "700" }]}>{money(p.amount)}</Text>
                 <Text style={s.sub}>{day(p.paidAt)} · {METHOD[p.method] || p.method}</Text>
               </View>
               <Text style={s.sub}>
-                {p.orderCount} order{p.orderCount === 1 ? "" : "s"} up to {upTo(p.periodEnd)}{p.reference ? ` · Ref ${p.reference}` : ""}
+                {p.orderCount} order{p.orderCount === 1 ? "" : "s"} up to {upTo(p.periodEnd)}{p.reference ? ` · Ref ${p.reference}` : ""} ›
               </Text>
-            </View>
+            </Pressable>
           ))}
         </Card>
       ) : null}
