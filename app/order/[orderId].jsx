@@ -279,7 +279,20 @@ const STORE_MESSAGES = [
   ["CHECK_APP", "Please check your order in the app"],
   ["CLOSING_SOON", "We're closing soon"],
 ];
-const OPEN_STATUSES = ["PENDING", "PREPARING", "STOCK_ISSUE", "CONFIRMED", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY"];
+const BEING_MADE = ["PENDING", "CONFIRMED", "PREPARING", "STOCK_ISSUE"];
+
+/**
+ * Messages that fit the order now (same rule as the server, orderMessageRules.js): "Ready,
+ * please pick it up" only for pickup; delivery orders only until the driver has them.
+ */
+function messageKeys(order) {
+  if (order.fulfillmentType === "PICKUP") {
+    if (BEING_MADE.includes(order.status)) return ["READY", "LATE", "CHECK_APP", "CLOSING_SOON"];
+    if (order.status === "READY_FOR_PICKUP") return ["READY", "CHECK_APP", "CLOSING_SOON"];
+    return [];
+  }
+  return BEING_MADE.includes(order.status) || order.status === "READY_FOR_PICKUP" ? ["LATE", "CHECK_APP"] : [];
+}
 
 /**
  * Fixed messages with the customer (no phone numbers either way, so orders stay on Sentroh).
@@ -288,7 +301,8 @@ const OPEN_STATUSES = ["PENDING", "PREPARING", "STOCK_ISSUE", "CONFIRMED", "READ
 function Messages({ order, onSend }) {
   const [busy, setBusy] = useState(null);
   const [failure, setFailure] = useState(null);
-  const open = OPEN_STATUSES.includes(order.status);
+  const keys = messageKeys(order);
+  const open = keys.length > 0;
   const list = order.messages || [];
   if (!open && list.length === 0) return null;
 
@@ -311,7 +325,7 @@ function Messages({ order, onSend }) {
         <>
           <Text style={[s.sub, { marginTop: list.length ? 10 : 2 }]}>Send a message (the customer gets a notification):</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
-            {STORE_MESSAGES.map(([key, text]) => (
+            {STORE_MESSAGES.filter(([key]) => keys.includes(key)).map(([key, text]) => (
               <Pressable key={key} disabled={!!busy} onPress={() => send(key)}
                 style={{ borderWidth: 1, borderColor: C.teal, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6, marginTop: 6, opacity: busy && busy !== key ? 0.5 : 1 }}>
                 <Text style={{ color: C.teal, fontWeight: "600" }}>{busy === key ? "Sending…" : text}</Text>
@@ -319,7 +333,11 @@ function Messages({ order, onSend }) {
             ))}
           </View>
         </>
-      ) : null}
+      ) : (
+        <Text style={[s.sub, { marginTop: 8 }]}>
+          {order.status === "OUT_FOR_DELIVERY" ? "The driver has the order now, so messages are closed." : "This order is finished, so messages are closed."}
+        </Text>
+      )}
       <Notice error={failure} />
     </Card>
   );
