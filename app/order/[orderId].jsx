@@ -134,6 +134,12 @@ export default function OrderScreen() {
 
   // Shared trip: Accept and Ready cover both orders at once (one driver takes both).
   const partner = data.order.sharedWith;
+  // Both orders as bags, numbered the same way on both order pages.
+  const bags = partner ? [
+    { orderNumber: o.orderNumber, customerName: o.customerName, subtotal: o.subtotal, items: o.items, status: o.status, notes: o.notes, here: true },
+    { ...partner, here: false },
+  ].sort((x, y) => String(x.orderNumber).localeCompare(String(y.orderNumber))).map((b, i) => ({ ...b, n: i + 1 })) : [];
+  const myBag = bags.find((b) => b.here)?.n;
   async function act(action, extra = {}) {
     if (partner && (action === "ACCEPT" || action === "MARK_READY")) {
       await call(`/shared-trips/${partner.tripId}/actions`, { method: "POST", body: { action, orderId } });
@@ -182,10 +188,28 @@ export default function OrderScreen() {
 
       {partner ? (
         <Card tone="attention">
-          <Text style={[s.body, { fontWeight: "800" }]}>Shared trip · 2 orders, 1 driver</Text>
-          <Body>This order goes with order #{partner.orderNumber} ({(STATUS_TEXT[partner.status] || partner.status).toLowerCase()}). Accept and Ready below cover both.</Body>
-          <Text onPress={() => router.push(`/order/${partner.orderId}`)} accessibilityRole="link"
-            style={[s.body, { fontWeight: "700", textDecorationLine: "underline", marginTop: 4 }]}>Open order #{partner.orderNumber}</Text>
+          <Text style={{ fontSize: 12, fontWeight: "800", color: C.mangoInk, letterSpacing: 0.5 }}>SHARED TRIP · 2 ORDERS · 1 DRIVER</Text>
+          <Text style={[s.body, { fontWeight: "800", marginTop: 2 }]}>Pack 2 bags, one per order</Text>
+          <Body>Write the order number on each bag. The driver takes both. Accept and Ready below cover both orders.</Body>
+          {bags.map((b) => (
+            <View key={b.n} style={{ backgroundColor: C.surface, borderRadius: 12, padding: 12, marginTop: 10 }}>
+              <View style={[s.row, { justifyContent: "space-between" }]}>
+                <Text style={[s.body, { fontWeight: "800" }]}>Bag {b.n} · #{b.orderNumber}</Text>
+                <Text style={[s.body, { fontWeight: "700" }]}>{money(b.subtotal)}</Text>
+              </View>
+              <Text style={s.sub}>{b.customerName} · {(STATUS_TEXT[b.status] || b.status)}{b.here ? " · this order" : ""}</Text>
+              {(b.items || []).map((i) => (
+                <Text key={i.id} style={[s.body, { marginTop: 4 }]}>
+                  {qty(i.qty, i.stockUnit)} {i.name}{i.choicesText ? ` (${i.choicesText})` : ""}{i.note ? `, note: ${i.note}` : ""}
+                </Text>
+              ))}
+              {b.notes ? <Text style={[s.sub, { color: C.mangoInk, marginTop: 4 }]}>Note: {b.notes}</Text> : null}
+              {!b.here ? (
+                <Text onPress={() => router.push(`/order/${partner.orderId}`)} accessibilityRole="link"
+                  style={[s.body, { fontWeight: "700", textDecorationLine: "underline", marginTop: 6 }]}>Open order #{b.orderNumber}</Text>
+              ) : null}
+            </View>
+          ))}
         </Card>
       ) : null}
 
@@ -235,7 +259,7 @@ export default function OrderScreen() {
       ) : null}
 
       <Card>
-        <Label>Items</Label>
+        <Label>{partner ? `Order #${o.orderNumber} items (bag ${myBag})` : "Items"}</Label>
         {o.items.map((i) => (
           <View key={i.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.line }}>
             <View style={[s.row, { justifyContent: "space-between" }]}>
