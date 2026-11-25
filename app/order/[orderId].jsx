@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/AppText";
@@ -116,6 +116,7 @@ function StockIssueSheet({ order, onClose, onRun }) {
 
 export default function OrderScreen() {
   const { orderId } = useLocalSearchParams();
+  const router = useRouter();
   const { storeId, call, keyFor } = useStore();
   const { data, error, loading, reload } = useLoader(() => call(`/orders/${orderId}`), [storeId, orderId],
     { intervalMs: 20000, key: keyFor(`/orders/${orderId}`) });
@@ -131,7 +132,16 @@ export default function OrderScreen() {
   const left = o.status === "PENDING" ? minutesLeft(o.acceptBy) : null;
   const isPickup = o.fulfillmentType === "PICKUP";
 
+  // Shared trip: Accept and Ready cover both orders at once (one driver takes both).
+  const partner = data.order.sharedWith;
   async function act(action, extra = {}) {
+    if (partner && (action === "ACCEPT" || action === "MARK_READY")) {
+      await call(`/shared-trips/${partner.tripId}/actions`, { method: "POST", body: { action, orderId } });
+      forgetCached(`${storeId}|/orders?`);
+      toast(`Orders #${o.orderNumber} and #${partner.orderNumber}: ${action === "ACCEPT" ? "accepted" : "ready for the driver"}.`);
+      reload();
+      return;
+    }
     await call(`/orders/${orderId}/actions`, { method: "POST", body: { action, ...extra } });
     forgetCached(`${storeId}|/orders?`); // order lists reload when you go back
     toast(`Order #${o.orderNumber}: ${STATUS_TEXT[{ ACCEPT: "PREPARING", REJECT: "CANCELLED", MARK_READY: "READY_FOR_PICKUP", MERCHANT_CANCEL: "CANCELLED", COMPLETE_PICKUP: "COMPLETED", REPORT_STOCK_ISSUE: "STOCK_ISSUE" }[action]]?.toLowerCase() || "updated"}.`);
@@ -155,7 +165,7 @@ export default function OrderScreen() {
         <Body>
           {isPickup ? "Pickup at the store" : o.deliveryService === "STANDARD" ? `Standard delivery${o.standardDepartureAt ? `, driver comes for the ${clock(o.standardDepartureAt)} run` : ""}` : "Express delivery, a driver comes as soon as it is ready"}
         </Body>
-        {o.sharedTrip ? (
+        {o.sharedTrip && !partner ? (
           <Body muted>Shared trip: a neighbour's order from your store goes with the same driver. Have both ready together.</Body>
         ) : null}
         {isPickup
@@ -170,9 +180,18 @@ export default function OrderScreen() {
         {o.status === "READY_FOR_PICKUP" && !isPickup ? <Body style={{ marginTop: 6 }}>Waiting for the driver to pick it up.</Body> : null}
       </Card>
 
+      {partner ? (
+        <Card tone="attention">
+          <Text style={[s.body, { fontWeight: "800" }]}>Shared trip · 2 orders, 1 driver</Text>
+          <Body>This order goes with order #{partner.orderNumber} ({(STATUS_TEXT[partner.status] || partner.status).toLowerCase()}). Accept and Ready below cover both.</Body>
+          <Text onPress={() => router.push(`/order/${partner.orderId}`)} accessibilityRole="link"
+            style={[s.body, { fontWeight: "700", textDecorationLine: "underline", marginTop: 4 }]}>Open order #{partner.orderNumber}</Text>
+        </Card>
+      ) : null}
+
       {o.status === "PENDING" ? (
         <View style={{ marginBottom: 12 }}>
-          <Button title="Accept and start preparing" busy={accepting} onPress={async () => {
+          <Button title={partner ? `Accept both orders (#${o.orderNumber} + #${partner.orderNumber})` : "Accept and start preparing"} busy={accepting} onPress={async () => {
             setAccepting(true); setFailure(null);
             try { await act("ACCEPT"); } catch (e) { setFailure(e); } finally { setAccepting(false); }
           }} />
@@ -183,7 +202,10 @@ export default function OrderScreen() {
 
       {["PREPARING", "CONFIRMED"].includes(o.status) ? (
         <View style={{ marginBottom: 12 }}>
-          <Button title={isPickup ? "Ready for pickup" : "Ready for the driver"} onPress={() => setSheet({ title: isPickup ? "Ready for pickup?" : "Ready for the driver?", description: isPickup ? "The customer is told to come to the store." : "The driver is told it is ready.", confirm: "Mark ready", note: false, run: () => act("MARK_READY") })} />
+          <Button title={partner ? "Both ready for the driver" : isPickup ? "Ready for pickup" : "Ready for the driver"} onPress={() => setSheet({
+            title: partner ? "Both orders ready?" : isPickup ? "Ready for pickup?" : "Ready for the driver?",
+            description: partner ? `Orders #${o.orderNumber} and #${partner.orderNumber} are packed and ready. The driver is told.` : isPickup ? "The customer is told to come to the store." : "The driver is told it is ready.",
+            confirm: partner ? "Mark both ready" : "Mark ready", note: false, run: () => act("MARK_READY") })} />
           <Button title="Some items are short" kind="attention" style={{ marginTop: 8 }} onPress={() => setStockSheet(true)} />
           <Button title="Cancel order" kind="danger" style={{ marginTop: 8 }}
             onPress={() => setSheet({ title: "Cancel this order?", description: "Only when you cannot fill it at all.", confirm: "Cancel order", danger: true, noteRequired: true, run: (v) => act("MERCHANT_CANCEL", v) })} />

@@ -48,6 +48,47 @@ const OrderRow = memo(function OrderRow({ order, onPress, onPressIn }) {
   );
 });
 
+/** The two orders of a shared trip as one card: one driver, accepted and readied together. */
+const SharedRow = memo(function SharedRow({ orders, onPress, onPressIn }) {
+  const [a] = orders;
+  const left = a.status === "PENDING" ? minutesLeft(a.acceptBy) : null;
+  const isNew = orders.some((o) => o.status === "PENDING");
+  const total = orders.reduce((sum, o) => sum + Number(o.subtotal || 0), 0);
+  return (
+    <Pressable onPress={onPress} onPressIn={onPressIn} accessibilityRole="button">
+      <Card tone={isNew ? "attention" : undefined} style={{ borderWidth: 2, borderColor: C.ink }}>
+        <Text style={{ fontSize: 12, fontWeight: "800", color: C.mangoInk, letterSpacing: 0.5 }}>SHARED TRIP · 2 ORDERS · 1 DRIVER</Text>
+        <View style={[s.row, { justifyContent: "space-between", marginTop: 4 }]}>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: C.ink }}>{orders.map((o) => `#${o.orderNumber}`).join(" + ")}</Text>
+          <Text style={[s.body, { fontWeight: "700" }]}>{money(total)}</Text>
+        </View>
+        {orders.map((o) => (
+          <Text key={o.id} style={s.sub}>#{o.orderNumber}: {o.customerName}, {o.itemCount} item{o.itemCount === 1 ? "" : "s"} · {STATUS_TEXT[o.status] || o.status}</Text>
+        ))}
+        <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
+          {isNew
+            ? <Pill tone="attention" text={left === 0 ? "Accept both now" : `Accept both within ${left ?? "?"} min`} />
+            : <Pill tone={a.status === "CANCELLED" ? "stopped" : a.status === "COMPLETED" ? "done" : "active"} text={STATUS_TEXT[a.status] || a.status} />}
+          <Text style={s.sub}>{ago(a.createdAt)}</Text>
+        </View>
+      </Card>
+    </Pressable>
+  );
+});
+
+/** Puts the two orders of a shared trip in one list entry. */
+function groupShared(orders) {
+  const out = [];
+  const byTrip = new Map();
+  for (const o of orders) {
+    if (o.sharedTripId && byTrip.has(o.sharedTripId)) { byTrip.get(o.sharedTripId).orders.push(o); continue; }
+    const entry = { id: o.sharedTripId ? `trip-${o.sharedTripId}` : o.id, orders: [o] };
+    if (o.sharedTripId) byTrip.set(o.sharedTripId, entry);
+    out.push(entry);
+  }
+  return out;
+}
+
 export default function Orders() {
   const router = useRouter();
   const { storeId, call, keyFor } = useStore();
@@ -90,11 +131,13 @@ export default function Orders() {
       {error ? <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><Notice error={error} /></View> : null}
       {loading && !data ? <Skeleton kind="cards" rows={5} what="Loading orders" /> : (
         <FlatList
-          data={data?.orders || []}
-          keyExtractor={(o) => o.id}
+          data={groupShared(data?.orders || [])}
+          keyExtractor={(e) => e.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refresh(); reloadNew(); }} tintColor={C.teal} />}
-          renderItem={({ item }) => <OrderRow order={item} onPressIn={() => loadOrder(item.id)} onPress={() => router.push(`/order/${item.id}`)} />}
+          renderItem={({ item }) => (item.orders.length > 1
+            ? <SharedRow orders={item.orders} onPressIn={() => loadOrder(item.orders[0].id)} onPress={() => router.push(`/order/${item.orders[0].id}`)} />
+            : <OrderRow order={item.orders[0]} onPressIn={() => loadOrder(item.orders[0].id)} onPress={() => router.push(`/order/${item.orders[0].id}`)} />)}
           initialNumToRender={10}
           windowSize={7}
           ListEmptyComponent={
