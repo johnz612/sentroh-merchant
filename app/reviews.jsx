@@ -106,7 +106,7 @@ function ReviewCard({ r, canEdit, call, onDone }) {
     <Card tone={r.stars <= 2 && !r.reply && !r.hidden ? "attention" : undefined}>
       <View style={[s.row, { justifyContent: "space-between" }]}>
         <Stars value={r.stars} />
-        <Text style={[s.sub, { fontSize: 12 }]}>{r.by} · #{r.orderNumber} · {date(r.createdAt)}</Text>
+        <Text style={[s.sub, { fontSize: 12 }]}>Verified customer · {date(r.createdAt)}</Text>
       </View>
       {r.tags.length ? <Text style={[s.sub, { marginTop: 4 }]}>{r.tags.join(" · ")}</Text> : null}
       {r.comment ? <Body style={{ marginTop: 6 }}>{r.comment}</Body> : null}
