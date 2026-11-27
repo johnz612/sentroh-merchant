@@ -35,7 +35,7 @@ const OrderRow = memo(function OrderRow({ order, onPress, onPressIn }) {
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.ink }}>#{order.orderNumber}</Text>
           <Text style={[s.body, { fontWeight: "700" }]}>{money(order.subtotal)}</Text>
         </View>
-        <Text style={[s.body, { marginTop: 2 }]}>{order.customerName}, {order.itemCount} item{order.itemCount === 1 ? "" : "s"}</Text>
+        <Text style={[s.body, { marginTop: 2 }]}>{order.customerName ? `${order.customerName}, ` : ""}{order.itemCount} item{order.itemCount === 1 ? "" : "s"}</Text>
         <Text style={s.sub}>{fulfillment(order)}, {order.paymentMethod === "GCASH" ? "GCash" : "Cash"}</Text>
         <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
           {isNew
@@ -63,7 +63,7 @@ const SharedRow = memo(function SharedRow({ orders, onPress, onPressIn }) {
           <Text style={[s.body, { fontWeight: "700" }]}>{money(total)}</Text>
         </View>
         {orders.map((o) => (
-          <Text key={o.id} style={s.sub}>#{o.orderNumber}: {o.customerName}, {o.itemCount} item{o.itemCount === 1 ? "" : "s"} · {STATUS_TEXT[o.status] || o.status}</Text>
+          <Text key={o.id} style={s.sub}>#{o.orderNumber}: {o.itemCount} item{o.itemCount === 1 ? "" : "s"} · {STATUS_TEXT[o.status] || o.status}</Text>
         ))}
         <View style={[s.row, { justifyContent: "space-between", marginTop: 8 }]}>
           {isNew

@@ -197,7 +197,7 @@ export default function OrderScreen() {
                 <Text style={[s.body, { fontWeight: "800" }]}>Bag {b.n} · #{b.orderNumber}</Text>
                 <Text style={[s.body, { fontWeight: "700" }]}>{money(b.subtotal)}</Text>
               </View>
-              <Text style={s.sub}>{b.customerName} · {(STATUS_TEXT[b.status] || b.status)}{b.here ? " · this order" : ""}</Text>
+              <Text style={s.sub}>{(STATUS_TEXT[b.status] || b.status)}{b.here ? " · this order" : ""}</Text>
               {(b.items || []).map((i) => (
                 <Text key={i.id} style={[s.body, { marginTop: 4 }]}>
                   {qty(i.qty, i.stockUnit)} {i.name}{i.choicesText ? ` (${i.choicesText})` : ""}{i.note ? `, note: ${i.note}` : ""}
@@ -288,7 +288,7 @@ export default function OrderScreen() {
 
       <Card>
         <Label>Customer</Label>
-        <Body>{o.customerName}</Body>
+        <Body>{isPickup ? o.customerName || "Customer" : "A Sentroh customer"}</Body>
         {!isPickup ? (
           <Body muted style={{ marginTop: 6 }}>
             The driver has the address and contacts the customer{o.deliveryDistanceKm != null ? ` (${Number(o.deliveryDistanceKm).toFixed(1)} km away)` : ""}.
