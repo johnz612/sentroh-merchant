@@ -173,6 +173,14 @@ export default function Store() {
         {!canEdit ? <Text style={[s.sub, { marginTop: 8 }]}>Only the owner or a manager can change this.</Text> : null}
       </Card>
 
+      <Pressable onPress={() => router.push("/reviews")} accessibilityRole="button">
+        <Card>
+          <Label>Reviews</Label>
+          <Body>See what customers say about your store. Reply to thank them or fix a problem.</Body>
+          <Text style={[s.body, { color: C.ink, fontWeight: "700", textDecorationLine: "underline", marginTop: 4 }]}>Open reviews</Text>
+        </Card>
+      </Pressable>
+
       <Pressable onPress={() => router.push("/hours")} accessibilityRole="button">
         <Card>
           <Label>Store hours</Label>

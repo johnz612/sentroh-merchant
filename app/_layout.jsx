@@ -61,8 +61,10 @@ function usePush() {
 
   useEffect(() => {
     const open = (response) => {
-      const orderId = response?.notification?.request?.content?.data?.orderId;
-      if (orderId) router.push(`/order/${orderId}`);
+      const data = response?.notification?.request?.content?.data || {};
+      // A new review opens Reviews; everything else about an order opens the order.
+      if (data.reviewId) router.push("/reviews");
+      else if (data.orderId) router.push(`/order/${data.orderId}`);
     };
     Notifications.getLastNotificationResponseAsync().then((r) => r && open(r)).catch(() => {});
     const sub = Notifications.addNotificationResponseReceivedListener(open);
@@ -118,6 +120,7 @@ function Root() {
       <Stack.Screen name="choice-group" options={{ title: "Choices" }} />
       <Stack.Screen name="payout/[payoutId]" options={{ title: "Payout" }} />
       <Stack.Screen name="report" options={{ title: "Email a report" }} />
+      <Stack.Screen name="reviews" options={{ title: "Reviews" }} />
     </Stack>
   );
 }
